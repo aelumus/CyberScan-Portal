@@ -36,6 +36,23 @@ services:
       retries: 3
     restart: unless-stopped
 
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: cyberscan-worker
+    env_file: .env
+    environment:
+      DB_PATH: /app/data/scans.db
+      UPLOAD_DIR: /app/data/uploads
+    volumes:
+      - app-data:/app/data
+    command: ["python", "worker.py"]
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
   frontend:
     build:
       context: .

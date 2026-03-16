@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
@@ -33,6 +33,18 @@ const MODEL_COLORS: Record<string, string> = {
     "LightGBM": "#c084fc", "LGB": "#c084fc",
 };
 
+const STEP_LABELS: Record<string, string> = {
+    queued: "In queue…",
+    starting: "Starting analysis…",
+    extracting_features: "Extracting 54 PE features…",
+    running_models: "Running RF · XGB · LGB models…",
+    computing_verdict: "Computing verdict…",
+    done: "Analysis complete",
+    error: "Analysis failed",
+};
+
+const STEP_ORDER = ["queued", "starting", "extracting_features", "running_models", "computing_verdict", "done"];
+
 export default function ScanDetailPage() {
     const { id } = useParams<{ id: string }>();
     const { authHeaders } = useAuth();
@@ -44,24 +56,50 @@ export default function ScanDetailPage() {
     const [stringsLoading, setStringsLoading] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     // YARA State
     const [yaraRule, setYaraRule] = useState("rule ExampleRule {\n  strings:\n    $a = \"http\"\n  condition:\n    $a\n}");
     const [yaraLoading, setYaraLoading] = useState(false);
     const [yaraResults, setYaraResults] = useState<YaraResponse | null>(null);
 
-    useEffect(() => {
+    const fetchScan = useCallback(() => {
         if (!id) return;
         fetch(buildApiUrl(`/api/scans/${id}`), { headers: authHeaders() })
             .then(r => { if (!r.ok) throw new Error(`Scan not found (${r.status})`); return r.json(); })
-            .then(data => {
+            .then((data: ScanRecord) => {
                 setScan(data);
                 setLoading(false);
-                // Strings analysis comes with the scan record
                 if (data.strings_analysis) setStringsData(data.strings_analysis);
+
+                const status = data.status ?? "completed";
+                if (status === "completed" || status === "failed") {
+                    if (pollRef.current) {
+                        clearInterval(pollRef.current);
+                        pollRef.current = null;
+                    }
+                }
             })
             .catch(e => { setError(e.message); setLoading(false); });
     }, [id, authHeaders]);
+
+    useEffect(() => {
+        fetchScan();
+    }, [fetchScan]);
+
+    useEffect(() => {
+        if (!scan) return;
+        const status = scan.status ?? "completed";
+        if ((status === "pending" || status === "processing") && !pollRef.current) {
+            pollRef.current = setInterval(fetchScan, 2000);
+        }
+        return () => {
+            if (pollRef.current) {
+                clearInterval(pollRef.current);
+                pollRef.current = null;
+            }
+        };
+    }, [scan?.status, fetchScan]);
 
     useEffect(() => {
         if (tab === "Features" && scan && !shapData && !shapLoading) {
@@ -138,6 +176,75 @@ export default function ScanDetailPage() {
             </div>
         </div>
     );
+
+    const scanStatus = scan.status ?? "completed";
+    const isProcessing = scanStatus === "pending" || scanStatus === "processing";
+
+    if (isProcessing) {
+        const step = scan.progress_step ?? "queued";
+        const stepIdx = STEP_ORDER.indexOf(step);
+        const progressPct = Math.max(5, Math.min(90, ((stepIdx + 1) / STEP_ORDER.length) * 100));
+
+        return (
+            <div className="space-y-5 max-w-2xl mx-auto">
+                <Link href="/scans" className="flex items-center gap-2 text-sm transition-colors" style={{ color: "var(--text-3)" }}>
+                    <ArrowLeft size={16} /> Back to History
+                </Link>
+
+                <div className="glass rounded-2xl p-8 text-center space-y-6">
+                    <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center"
+                        style={{ background: "var(--accent-bg)", border: "1px solid var(--accent-brd)" }}>
+                        <Loader2 size={28} className="animate-spin" style={{ color: "var(--accent)" }} />
+                    </div>
+
+                    <div>
+                        <h2 className="text-xl font-black" style={{ color: "var(--text)" }}>Analyzing {scan.filename}</h2>
+                        <p className="text-sm mt-1" style={{ color: "var(--text-3)" }}>
+                            {STEP_LABELS[step] ?? step}
+                        </p>
+                    </div>
+
+                    <div className="space-y-2">
+                        <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
+                            <div className="h-full rounded-full transition-all duration-700"
+                                style={{ width: `${progressPct}%`, background: "linear-gradient(90deg,#4f46e5,#7c3aed,#ec4899)" }} />
+                        </div>
+                        <div className="flex gap-3 justify-center flex-wrap">
+                            {STEP_ORDER.slice(0, -1).map((s, i) => (
+                                <span key={s} className="flex items-center gap-1 text-xs"
+                                    style={{ color: i <= stepIdx ? "var(--accent)" : "var(--text-3)" }}>
+                                    {i <= stepIdx ? "✓" : "○"} {STEP_LABELS[s]?.replace("…", "") ?? s}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+
+                    <p className="text-xs" style={{ color: "var(--text-3)", opacity: 0.5 }}>
+                        Auto-refreshing every 2 seconds
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    if (scanStatus === "failed") {
+        return (
+            <div className="space-y-5 max-w-2xl mx-auto">
+                <Link href="/scans" className="flex items-center gap-2 text-sm transition-colors" style={{ color: "var(--text-3)" }}>
+                    <ArrowLeft size={16} /> Back to History
+                </Link>
+                <div className="glass rounded-2xl p-8 text-center space-y-4">
+                    <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center"
+                        style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                        <AlertTriangle size={28} className="text-red-400" />
+                    </div>
+                    <h2 className="text-xl font-black" style={{ color: "var(--text)" }}>Analysis Failed</h2>
+                    <p className="text-sm" style={{ color: "var(--text-3)" }}>{scan.error ?? "Unknown error during processing"}</p>
+                    <p className="text-xs font-mono" style={{ color: "var(--text-3)" }}>{scan.filename}</p>
+                </div>
+            </div>
+        );
+    }
 
     const mlResults: ScanModelResult[] = scan.ml_results ?? [];
     const topFeatures: FeatureImportance[] = scan.features?.DS1 ?? [];

@@ -2,7 +2,7 @@
 import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { Upload, X, Play, AlertTriangle, Cpu, Lock, ChevronRight } from "lucide-react";
+import { Upload, X, Play, AlertTriangle, Cpu, Lock, ChevronRight, Loader2 } from "lucide-react";
 import { buildApiUrl, createFormData, readApiError } from "@/lib/api";
 
 export default function ScanPage() {
@@ -12,7 +12,6 @@ export default function ScanPage() {
     const [dragging, setDragging] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
-    const [progress, setProgress] = useState(0);
     const fileRef = useRef<HTMLInputElement>(null);
     const [useVt, setUseVt] = useState(false);
     const [threshold, setThreshold] = useState(0.4);
@@ -27,8 +26,7 @@ export default function ScanPage() {
 
     const submit = async () => {
         if (!file) { setError("No file selected"); return; }
-        setLoading(true); setError(""); setProgress(0);
-        const interval = setInterval(() => setProgress(p => Math.min(p + Math.random() * 15, 85)), 300);
+        setLoading(true); setError("");
         const form = createFormData({
             file,
             use_vt: String(useVt),
@@ -39,14 +37,12 @@ export default function ScanPage() {
             const res = await fetch(buildApiUrl("/api/scan"), {
                 method: "POST", body: form, headers: authHeaders()
             });
-            clearInterval(interval); setProgress(100);
-            if (!res.ok) {
+            if (!res.ok && res.status !== 202) {
                 throw new Error(await readApiError(res, `Scan failed (${res.status})`));
             }
             const data = await res.json();
-            setTimeout(() => router.push(`/scans/${data.id}`), 300);
+            router.push(`/scans/${data.id}`);
         } catch (e: unknown) {
-            clearInterval(interval); setProgress(0);
             setError(e instanceof Error ? e.message : "Backend unreachable");
             setLoading(false);
         }
@@ -101,24 +97,11 @@ export default function ScanPage() {
                 )}
             </div>
 
-            {/* Progress */}
+            {/* Submitting */}
             {loading && (
-                <div className="glass rounded-xl p-4">
-                    <div className="flex items-center justify-between text-xs mb-2">
-                        <span style={{ color: "var(--text-2)" }}>Analyzing binary…</span>
-                        <span className="font-mono" style={{ color: "var(--accent)" }}>{Math.round(progress)}%</span>
-                    </div>
-                    <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
-                        <div className="h-full rounded-full transition-all duration-300"
-                            style={{ width: `${progress}%`, background: "linear-gradient(90deg,#4f46e5,#7c3aed,#ec4899)" }} />
-                    </div>
-                    <div className="flex gap-2 mt-3 text-xs flex-wrap" style={{ color: "var(--text-3)" }}>
-                        {["Parsing PE", "Extracting 54 features", "Running RF · XGB · LGB", "Computing verdict"].map((s, i) => (
-                            <span key={s} className="flex items-center gap-1" style={{ color: progress > i * 25 ? "var(--accent)" : "var(--text-3)" }}>
-                                {progress > i * 25 ? "✓" : "○"} {s}
-                            </span>
-                        ))}
-                    </div>
+                <div className="glass rounded-xl p-4 flex items-center gap-3">
+                    <Loader2 size={16} className="animate-spin" style={{ color: "var(--accent)" }} />
+                    <span className="text-sm" style={{ color: "var(--text-2)" }}>Uploading file…</span>
                 </div>
             )}
 

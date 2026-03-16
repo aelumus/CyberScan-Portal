@@ -110,6 +110,8 @@ export interface YaraResponse {
     matches: YaraMatch[];
 }
 
+export type ScanStatus = "pending" | "processing" | "completed" | "failed";
+
 export interface ScanRecord {
     id: string;
     filename: string;
@@ -123,6 +125,9 @@ export interface ScanRecord {
     file_size?: number;
     threshold?: number;
     mode?: string;
+    status?: ScanStatus;
+    progress_step?: string;
+    error?: string;
     ml_results?: ScanModelResult[];
     features?: ScanFeatures;
     vt_result?: VirusTotalResult | null;
