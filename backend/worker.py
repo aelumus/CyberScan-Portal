@@ -11,8 +11,8 @@ import sqlite3
 import time
 from pathlib import Path
 
-from settings import settings
 from scan_engine import process_scan
+from settings import settings
 
 DB_PATH = str(settings.db_path)
 UPLOAD_DIR = settings.upload_dir

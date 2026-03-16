@@ -21,5 +21,8 @@ ignore = [
 "backend/test_features.py" = ["E402", "I001"]
 "backend/gen_test_malware.py" = ["E401", "I001"]
 
+[lint.isort]
+known-first-party = ["settings", "scan_engine"]
+
 [format]
 quote-style = "double"
