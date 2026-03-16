@@ -1,4 +1,21 @@
 services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: cyberscan-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      frontend:
+        condition: service_started
+    restart: unless-stopped
+
   backend:
     build:
       context: .
@@ -9,8 +26,6 @@ services:
       DB_PATH: /app/data/scans.db
       UPLOAD_DIR: /app/data/uploads
       RELOAD: "false"
-    ports:
-      - "8000:8000"
     volumes:
       - app-data:/app/data
     healthcheck:
@@ -26,10 +41,8 @@ services:
       context: .
       dockerfile: portal/Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:8000
+        NEXT_PUBLIC_API_URL: ""
     container_name: cyberscan-frontend
-    ports:
-      - "3000:3000"
     depends_on:
       backend:
         condition: service_healthy
@@ -37,3 +50,5 @@ services:
 
 volumes:
   app-data:
+  caddy-data:
+  caddy-config:
