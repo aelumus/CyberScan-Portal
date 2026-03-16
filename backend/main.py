@@ -20,18 +20,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
-from settings import settings
 
 from scan_engine import (
+    DS1_FEATURE_COLS,
     MOCK_METRICS,
     MODEL_ORDER,
     MODEL_REGISTRY,
     REAL_MODELS,
-    DS1_FEATURE_COLS,
     extract_ds1_features,
     extract_suspicious_strings,
     validate_pe,
 )
+from settings import settings
 
 try:
     import yara
