@@ -1,0 +1,16 @@
+aiofiles
+fastapi
+joblib
+lightgbm
+numpy
+pandas
+pefile
+python-jose[cryptography]
+python-multipart
+reportlab
+requests
+scikit-learn
+shap
+uvicorn[standard]
+xgboost-cpu
+yara-python

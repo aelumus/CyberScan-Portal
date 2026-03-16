@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+/* ── DARK THEME (default) ── */
+:root,
+[data-theme="dark"] {
+  --bg: #020617;
+  --bg-grad: linear-gradient(135deg, #020617 0%, #0a0f2e 50%, #060d1f 100%);
+  --surface: rgba(255, 255, 255, 0.04);
+  --surface-2: rgba(255, 255, 255, 0.07);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-2: rgba(255, 255, 255, 0.14);
+  --text: #f1f5f9;
+  --text-2: #94a3b8;
+  --text-3: #475569;
+  --accent: #818cf8;
+  --accent-bg: rgba(99, 102, 241, 0.12);
+  --accent-brd: rgba(99, 102, 241, 0.25);
+  --sidebar-bg: rgba(2, 6, 23, 0.85);
+  --topbar-bg: rgba(2, 6, 23, 0.65);
+  --card-glow: 0 0 40px rgba(99, 102, 241, 0.08);
+}
+
+/* ── LIGHT THEME ── */
+[data-theme="light"] {
+  --bg: #f0f4ff;
+  --bg-grad: linear-gradient(135deg, #eef2ff 0%, #f5f3ff 50%, #fdf4ff 100%);
+  --surface: rgba(255, 255, 255, 0.92);
+  --surface-2: rgba(255, 255, 255, 0.7);
+  --border: rgba(99, 102, 241, 0.14);
+  --border-2: rgba(99, 102, 241, 0.25);
+  --text: #0f172a;
+  --text-2: #475569;
+  --text-3: #94a3b8;
+  --accent: #4f46e5;
+  --accent-bg: rgba(99, 102, 241, 0.08);
+  --accent-brd: rgba(99, 102, 241, 0.2);
+  --sidebar-bg: rgba(255, 255, 255, 0.95);
+  --topbar-bg: rgba(255, 255, 255, 0.85);
+  --card-glow: 0 4px 24px rgba(99, 102, 241, 0.10);
+}
+
+body {
+  background: var(--bg-grad);
+  font-family: 'Inter', sans-serif;
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── Themed glass card ── */
+.glass {
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  box-shadow: var(--card-glow);
+}
+
+.glass-2 {
+  background: var(--surface-2);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border-2);
+}
+
+/* ── Light theme overrides for recharts ── */
+[data-theme="light"] .recharts-cartesian-grid line {
+  stroke: rgba(99, 102, 241, 0.08);
+}
+
+/* ── Sidebar link (kept for compatibility) ── */
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+  color: var(--text-3);
+  border: 1px solid transparent;
+}
+
+.sidebar-link:hover {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.sidebar-link.active {
+  background: var(--accent-bg);
+  border-color: var(--accent-brd);
+  color: var(--accent);
+}
+
+/* ── Data table ── */
+.data-table th {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 10px 16px;
+  background: var(--surface);
+  text-align: left;
+}
+
+.data-table td {
+  padding: 10px 16px;
+  font-size: 13px;
+  color: var(--text-2);
+  border-top: 1px solid var(--border);
+}
+
+.data-table tr:hover td {
+  background: var(--accent-bg);
+}
+
+/* stat card */
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+}

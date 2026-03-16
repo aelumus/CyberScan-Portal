@@ -1,0 +1,25 @@
+target-version = "py311"
+line-length = 100
+
+[lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort (import ordering)
+    "UP",  # pyupgrade (modern Python syntax)
+    "B",   # flake8-bugbear (common bugs)
+    "SIM", # flake8-simplify
+]
+ignore = [
+    "E501", # line length handled by formatter
+    "B008", # Depends/File/Form in defaults — standard FastAPI pattern
+    "B905", # zip(strict=) — too pedantic for this codebase
+]
+
+[lint.per-file-ignores]
+"backend/test_features.py" = ["E402", "I001"]
+"backend/gen_test_malware.py" = ["E401", "I001"]
+
+[format]
+quote-style = "double"

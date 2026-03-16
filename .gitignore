@@ -1,0 +1,48 @@
+# ── Python ───────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+.venv/
+venv/
+
+# ── Node / Next.js ──────────────────────────────
+node_modules/
+.next/
+out/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# ── Environment ─────────────────────────────────
+.env
+!.env.example
+
+# ── Docker ──────────────────────────────────────
+docker-compose.override.yml
+
+# ── IDE ─────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ── OS ──────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Logs ────────────────────────────────────────
+*.log
+npm-debug.log*
+
+# ── Database (local dev) ────────────────────────
+*.db
+
+# ── Uploaded scan files ─────────────────────────
+backend/uploads/
+
+# ── ML project (keep only trained models) ──────
+Malware-Detection-and-Analysis-using-Machine-Learning-main/*
+!Malware-Detection-and-Analysis-using-Machine-Learning-main/ML_model/
+Malware-Detection-and-Analysis-using-Machine-Learning-main/ML_model/*
+!Malware-Detection-and-Analysis-using-Machine-Learning-main/ML_model/*.pkl
