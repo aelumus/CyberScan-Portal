@@ -520,8 +520,12 @@ def download_pdf(scan_id: str, current_user: dict | None = Depends(get_current_u
 
         buf = io.BytesIO()
         doc = SimpleDocTemplate(
-            buf, pagesize=A4, leftMargin=2 * cm, rightMargin=2 * cm,
-            topMargin=2 * cm, bottomMargin=2 * cm,
+            buf,
+            pagesize=A4,
+            leftMargin=2 * cm,
+            rightMargin=2 * cm,
+            topMargin=2 * cm,
+            bottomMargin=2 * cm,
         )
         styles = getSampleStyleSheet()
 
@@ -533,23 +537,42 @@ def download_pdf(scan_id: str, current_user: dict | None = Depends(get_current_u
         GRAY = colors.HexColor("#64748b")
 
         verdict_color = (
-            RED if record["verdict"] == "Malicious"
+            RED
+            if record["verdict"] == "Malicious"
             else (AMBER if record["verdict"] == "Suspicious" else GREEN)
         )
 
         title_style = ParagraphStyle(
-            "title", parent=styles["Normal"], fontName="Helvetica-Bold",
-            fontSize=22, textColor=DARK, spaceAfter=4, alignment=TA_LEFT,
+            "title",
+            parent=styles["Normal"],
+            fontName="Helvetica-Bold",
+            fontSize=22,
+            textColor=DARK,
+            spaceAfter=4,
+            alignment=TA_LEFT,
         )
         subtitle_style = ParagraphStyle(
-            "sub", parent=styles["Normal"], fontName="Helvetica", fontSize=10, textColor=GRAY,
+            "sub",
+            parent=styles["Normal"],
+            fontName="Helvetica",
+            fontSize=10,
+            textColor=GRAY,
         )
         section_style = ParagraphStyle(
-            "section", parent=styles["Normal"], fontName="Helvetica-Bold",
-            fontSize=12, textColor=ACCENT, spaceBefore=14, spaceAfter=6,
+            "section",
+            parent=styles["Normal"],
+            fontName="Helvetica-Bold",
+            fontSize=12,
+            textColor=ACCENT,
+            spaceBefore=14,
+            spaceAfter=6,
         )
         ParagraphStyle(
-            "body", parent=styles["Normal"], fontName="Helvetica", fontSize=9, textColor=DARK,
+            "body",
+            parent=styles["Normal"],
+            fontName="Helvetica",
+            fontSize=9,
+            textColor=DARK,
         )
 
         story = []
@@ -562,16 +585,20 @@ def download_pdf(scan_id: str, current_user: dict | None = Depends(get_current_u
 
         story.append(Paragraph("VERDICT", section_style))
         verdict_table = Table(
-            [[
-                Paragraph(
-                    record["verdict"].upper(),
-                    ParagraphStyle("v", fontName="Helvetica-Bold", fontSize=20, textColor=verdict_color),
-                ),
-                Paragraph(
-                    f"Risk: {record.get('risk_level', '—').upper()}\nScore: {round(record.get('score', 0) * 100, 1)}%",
-                    ParagraphStyle("r", fontName="Helvetica", fontSize=11, textColor=GRAY),
-                ),
-            ]],
+            [
+                [
+                    Paragraph(
+                        record["verdict"].upper(),
+                        ParagraphStyle(
+                            "v", fontName="Helvetica-Bold", fontSize=20, textColor=verdict_color
+                        ),
+                    ),
+                    Paragraph(
+                        f"Risk: {record.get('risk_level', '—').upper()}\nScore: {round(record.get('score', 0) * 100, 1)}%",
+                        ParagraphStyle("r", fontName="Helvetica", fontSize=11, textColor=GRAY),
+                    ),
+                ]
+            ],
             colWidths=[8 * cm, 9 * cm],
         )
         verdict_table.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
@@ -592,42 +619,62 @@ def download_pdf(scan_id: str, current_user: dict | None = Depends(get_current_u
             ["PE Parse OK", "Yes" if record.get("pe_parse_ok") else "No"],
         ]
         info_table = Table(info_data, colWidths=[5 * cm, 12 * cm])
-        info_table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), ACCENT),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 9),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
-            ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#e2e8f0")),
-            ("LEFTPADDING", (0, 0), (-1, -1), 8),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-            ("TOPPADDING", (0, 0), (-1, -1), 5),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-        ]))
+        info_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), ACCENT),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 9),
+                    (
+                        "ROWBACKGROUNDS",
+                        (0, 1),
+                        (-1, -1),
+                        [colors.white, colors.HexColor("#f8fafc")],
+                    ),
+                    ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#e2e8f0")),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                    ("TOPPADDING", (0, 0), (-1, -1), 5),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ]
+            )
+        )
         story.append(info_table)
 
         if record.get("ml_results"):
             story.append(Paragraph("ML MODEL SCORES", section_style))
             ml_data = [["Model", "Score", "Triggered", "Real Model"]]
             for r in record["ml_results"]:
-                ml_data.append([
-                    r.get("name", r.get("algo", "—")),
-                    f"{round(r.get('score', 0) * 100, 1)}%",
-                    "YES" if r.get("triggered") else "no",
-                    "✓" if r.get("using_real_model") else "mock",
-                ])
+                ml_data.append(
+                    [
+                        r.get("name", r.get("algo", "—")),
+                        f"{round(r.get('score', 0) * 100, 1)}%",
+                        "YES" if r.get("triggered") else "no",
+                        "✓" if r.get("using_real_model") else "mock",
+                    ]
+                )
             ml_table = Table(ml_data, colWidths=[5 * cm, 3 * cm, 4 * cm, 5 * cm])
-            ml_table.setStyle(TableStyle([
-                ("BACKGROUND", (0, 0), (-1, 0), ACCENT),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, -1), 9),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
-                ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#e2e8f0")),
-                ("LEFTPADDING", (0, 0), (-1, -1), 8),
-                ("TOPPADDING", (0, 0), (-1, -1), 5),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-            ]))
+            ml_table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), ACCENT),
+                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                        ("FONTSIZE", (0, 0), (-1, -1), 9),
+                        (
+                            "ROWBACKGROUNDS",
+                            (0, 1),
+                            (-1, -1),
+                            [colors.white, colors.HexColor("#f8fafc")],
+                        ),
+                        ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#e2e8f0")),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                        ("TOPPADDING", (0, 0), (-1, -1), 5),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                    ]
+                )
+            )
             story.append(ml_table)
 
         if record.get("features", {}).get("DS1"):
@@ -637,32 +684,46 @@ def download_pdf(scan_id: str, current_user: dict | None = Depends(get_current_u
                 [f["name"], f"{round(f['importance'] * 100, 2)}%"] for f in top
             ]
             feat_table = Table(feat_data, colWidths=[10 * cm, 7 * cm])
-            feat_table.setStyle(TableStyle([
-                ("BACKGROUND", (0, 0), (-1, 0), ACCENT),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, -1), 9),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
-                ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#e2e8f0")),
-                ("LEFTPADDING", (0, 0), (-1, -1), 8),
-                ("TOPPADDING", (0, 0), (-1, -1), 5),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-            ]))
+            feat_table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), ACCENT),
+                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                        ("FONTSIZE", (0, 0), (-1, -1), 9),
+                        (
+                            "ROWBACKGROUNDS",
+                            (0, 1),
+                            (-1, -1),
+                            [colors.white, colors.HexColor("#f8fafc")],
+                        ),
+                        ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#e2e8f0")),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                        ("TOPPADDING", (0, 0), (-1, -1), 5),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                    ]
+                )
+            )
             story.append(feat_table)
 
         story.append(Spacer(1, 0.5 * cm))
         story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#e2e8f0")))
         story.append(Spacer(1, 0.2 * cm))
-        story.append(Paragraph(
-            f"Generated by CyberScan Portal v3.0 · {datetime.now().strftime('%Y-%m-%d %H:%M')} · Scan ID: {scan_id}",
-            ParagraphStyle("footer", fontName="Helvetica", fontSize=7, textColor=GRAY, alignment=TA_CENTER),
-        ))
+        story.append(
+            Paragraph(
+                f"Generated by CyberScan Portal v3.0 · {datetime.now().strftime('%Y-%m-%d %H:%M')} · Scan ID: {scan_id}",
+                ParagraphStyle(
+                    "footer", fontName="Helvetica", fontSize=7, textColor=GRAY, alignment=TA_CENTER
+                ),
+            )
+        )
 
         doc.build(story)
         buf.seek(0)
         filename = f"cyberscan_{record.get('filename', 'report').replace('.', '_')}_{scan_id}.pdf"
         return StreamingResponse(
-            buf, media_type="application/pdf",
+            buf,
+            media_type="application/pdf",
             headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
     except Exception as e:
@@ -763,18 +824,26 @@ def run_yara_rule(
                 if hasattr(m, "instances") and hasattr(m, "identifier"):
                     for inst in m.instances[:2]:
                         d = getattr(inst, "matched_data", b"")
-                        str_matches.append({
-                            "offset": getattr(inst, "offset", 0),
-                            "identifier": m.identifier,
-                            "data": d.decode("ascii", errors="ignore") if isinstance(d, bytes) else str(d),
-                        })
+                        str_matches.append(
+                            {
+                                "offset": getattr(inst, "offset", 0),
+                                "identifier": m.identifier,
+                                "data": d.decode("ascii", errors="ignore")
+                                if isinstance(d, bytes)
+                                else str(d),
+                            }
+                        )
                 else:
                     with contextlib.suppress(Exception):
-                        str_matches.append({
-                            "offset": m[0],
-                            "identifier": m[1],
-                            "data": m[2].decode("ascii", errors="ignore") if isinstance(m[2], bytes) else str(m[2]),
-                        })
+                        str_matches.append(
+                            {
+                                "offset": m[0],
+                                "identifier": m[1],
+                                "data": m[2].decode("ascii", errors="ignore")
+                                if isinstance(m[2], bytes)
+                                else str(m[2]),
+                            }
+                        )
 
             match_results.append(
                 {"rule": match.rule, "tags": match.tags, "meta": match.meta, "strings": str_matches}

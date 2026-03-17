@@ -31,20 +31,68 @@ SUPPORTED_MACHINE_ARCHS = {0x014C, 0x8664}
 LEGACY_MACHINE_NAMES = {0xAA64: "ARM64", 0x01C0: "ARM", 0x0200: "IA64"}
 
 DS1_FEATURE_COLS = [
-    "Text_entro", "Rsrc_entro", "Data_entro", "Idata_entro", "bss_entro",
-    "nsec", "codesize", "initdatsize", "uninitdatsize", "adrentpt",
-    "soi", "optcksum", "char", "dllch",
-    "Text_char", "Rsrc_char", "Data_char", "Idata_char", "bss_char",
-    "Text_secsize", "Text_datsize", "Rsrc_secsize", "Rsrc_datsize",
-    "Data_secsize", "Data_datsize", "Idata_secsize", "Idata_datsize",
-    "bss_virsize", "ibase", "ss", "secalign", "filealign",
-    "Text_byteaddr", "Rsrc_byteaddr", "Data_byteaddr", "Idata_byteaddr",
-    "bss_viraddr", "Text_mscfaddr", "Rsrc_mscfaddr", "Data_mscfaddr",
-    "Idata_mscfaddr", "bss_phyaddr", "cbase", "dbase",
-    "majssver", "minssver", "majosver", "minosver",
-    "majiver", "miniver", "majlv", "minlv",
-    "sosr", "sosc", "sohr", "sohc",
-    "ndirent", "mach", "sig", "ohs", "win32vv", "soh",
+    "Text_entro",
+    "Rsrc_entro",
+    "Data_entro",
+    "Idata_entro",
+    "bss_entro",
+    "nsec",
+    "codesize",
+    "initdatsize",
+    "uninitdatsize",
+    "adrentpt",
+    "soi",
+    "optcksum",
+    "char",
+    "dllch",
+    "Text_char",
+    "Rsrc_char",
+    "Data_char",
+    "Idata_char",
+    "bss_char",
+    "Text_secsize",
+    "Text_datsize",
+    "Rsrc_secsize",
+    "Rsrc_datsize",
+    "Data_secsize",
+    "Data_datsize",
+    "Idata_secsize",
+    "Idata_datsize",
+    "bss_virsize",
+    "ibase",
+    "ss",
+    "secalign",
+    "filealign",
+    "Text_byteaddr",
+    "Rsrc_byteaddr",
+    "Data_byteaddr",
+    "Idata_byteaddr",
+    "bss_viraddr",
+    "Text_mscfaddr",
+    "Rsrc_mscfaddr",
+    "Data_mscfaddr",
+    "Idata_mscfaddr",
+    "bss_phyaddr",
+    "cbase",
+    "dbase",
+    "majssver",
+    "minssver",
+    "majosver",
+    "minosver",
+    "majiver",
+    "miniver",
+    "majlv",
+    "minlv",
+    "sosr",
+    "sosc",
+    "sohr",
+    "sohc",
+    "ndirent",
+    "mach",
+    "sig",
+    "ohs",
+    "win32vv",
+    "soh",
 ]
 
 MODEL_REGISTRY = {
@@ -347,33 +395,117 @@ def apply_vt_adjustments(
 
 # ── Suspicious Strings ────────────────────────────────────────────────────────
 DANGEROUS_IMPORTS = {
-    "CreateRemoteThread", "VirtualAllocEx", "WriteProcessMemory", "ReadProcessMemory",
-    "SetThreadContext", "GetThreadContext", "ShellExecute", "ShellExecuteEx",
-    "WinExec", "CreateProcess", "URLDownloadToFile", "URLDownloadToCacheFile",
-    "InternetOpen", "InternetOpenUrl", "HttpSendRequest", "WSAStartup",
-    "RegSetValueEx", "RegCreateKeyEx", "RegDeleteKey",
-    "IsDebuggerPresent", "CheckRemoteDebuggerPresent", "NtQueryInformationProcess",
-    "SetWindowsHookEx", "GetAsyncKeyState", "GetKeyState", "keybd_event",
-    "CryptEncrypt", "CryptDecrypt", "CryptGenKey",
-    "CreateService", "OpenService", "StartService", "ControlService",
+    "CreateRemoteThread",
+    "VirtualAllocEx",
+    "WriteProcessMemory",
+    "ReadProcessMemory",
+    "SetThreadContext",
+    "GetThreadContext",
+    "ShellExecute",
+    "ShellExecuteEx",
+    "WinExec",
+    "CreateProcess",
+    "URLDownloadToFile",
+    "URLDownloadToCacheFile",
+    "InternetOpen",
+    "InternetOpenUrl",
+    "HttpSendRequest",
+    "WSAStartup",
+    "RegSetValueEx",
+    "RegCreateKeyEx",
+    "RegDeleteKey",
+    "IsDebuggerPresent",
+    "CheckRemoteDebuggerPresent",
+    "NtQueryInformationProcess",
+    "SetWindowsHookEx",
+    "GetAsyncKeyState",
+    "GetKeyState",
+    "keybd_event",
+    "CryptEncrypt",
+    "CryptDecrypt",
+    "CryptGenKey",
+    "CreateService",
+    "OpenService",
+    "StartService",
+    "ControlService",
 }
 
 MITRE_MAPPING = {
-    "VirtualAlloc": {"id": "T1055", "name": "Process Injection", "url": "https://attack.mitre.org/techniques/T1055/"},
-    "CreateRemoteThread": {"id": "T1055", "name": "Process Injection", "url": "https://attack.mitre.org/techniques/T1055/"},
-    "WriteProcessMemory": {"id": "T1055", "name": "Process Injection", "url": "https://attack.mitre.org/techniques/T1055/"},
-    "RegSetValueExA": {"id": "T1112", "name": "Modify Registry", "url": "https://attack.mitre.org/techniques/T1112/"},
-    "RegSetValueExW": {"id": "T1112", "name": "Modify Registry", "url": "https://attack.mitre.org/techniques/T1112/"},
-    "GetKeyboardState": {"id": "T1056.001", "name": "Keylogging", "url": "https://attack.mitre.org/techniques/T1056/001/"},
-    "GetAsyncKeyState": {"id": "T1056.001", "name": "Keylogging", "url": "https://attack.mitre.org/techniques/T1056/001/"},
-    "SetWindowsHookEx": {"id": "T1056.001", "name": "Keylogging", "url": "https://attack.mitre.org/techniques/T1056/001/"},
-    "URLDownloadToFile": {"id": "T1105", "name": "Ingress Tool Transfer", "url": "https://attack.mitre.org/techniques/T1105/"},
-    "InternetOpenUrlA": {"id": "T1105", "name": "Ingress Tool Transfer", "url": "https://attack.mitre.org/techniques/T1105/"},
-    "WINEXEC": {"id": "T1059.003", "name": "Windows Command Shell", "url": "https://attack.mitre.org/techniques/T1059/003/"},
-    "ShellExecute": {"id": "T1059.003", "name": "Windows Command Shell", "url": "https://attack.mitre.org/techniques/T1059/003/"},
-    "CreateProcessA": {"id": "T1059.003", "name": "Windows Command Shell", "url": "https://attack.mitre.org/techniques/T1059/003/"},
-    "GetProcAddress": {"id": "T1129", "name": "Shared Modules", "url": "https://attack.mitre.org/techniques/T1129/"},
-    "LoadLibraryA": {"id": "T1129", "name": "Shared Modules", "url": "https://attack.mitre.org/techniques/T1129/"},
+    "VirtualAlloc": {
+        "id": "T1055",
+        "name": "Process Injection",
+        "url": "https://attack.mitre.org/techniques/T1055/",
+    },
+    "CreateRemoteThread": {
+        "id": "T1055",
+        "name": "Process Injection",
+        "url": "https://attack.mitre.org/techniques/T1055/",
+    },
+    "WriteProcessMemory": {
+        "id": "T1055",
+        "name": "Process Injection",
+        "url": "https://attack.mitre.org/techniques/T1055/",
+    },
+    "RegSetValueExA": {
+        "id": "T1112",
+        "name": "Modify Registry",
+        "url": "https://attack.mitre.org/techniques/T1112/",
+    },
+    "RegSetValueExW": {
+        "id": "T1112",
+        "name": "Modify Registry",
+        "url": "https://attack.mitre.org/techniques/T1112/",
+    },
+    "GetKeyboardState": {
+        "id": "T1056.001",
+        "name": "Keylogging",
+        "url": "https://attack.mitre.org/techniques/T1056/001/",
+    },
+    "GetAsyncKeyState": {
+        "id": "T1056.001",
+        "name": "Keylogging",
+        "url": "https://attack.mitre.org/techniques/T1056/001/",
+    },
+    "SetWindowsHookEx": {
+        "id": "T1056.001",
+        "name": "Keylogging",
+        "url": "https://attack.mitre.org/techniques/T1056/001/",
+    },
+    "URLDownloadToFile": {
+        "id": "T1105",
+        "name": "Ingress Tool Transfer",
+        "url": "https://attack.mitre.org/techniques/T1105/",
+    },
+    "InternetOpenUrlA": {
+        "id": "T1105",
+        "name": "Ingress Tool Transfer",
+        "url": "https://attack.mitre.org/techniques/T1105/",
+    },
+    "WINEXEC": {
+        "id": "T1059.003",
+        "name": "Windows Command Shell",
+        "url": "https://attack.mitre.org/techniques/T1059/003/",
+    },
+    "ShellExecute": {
+        "id": "T1059.003",
+        "name": "Windows Command Shell",
+        "url": "https://attack.mitre.org/techniques/T1059/003/",
+    },
+    "CreateProcessA": {
+        "id": "T1059.003",
+        "name": "Windows Command Shell",
+        "url": "https://attack.mitre.org/techniques/T1059/003/",
+    },
+    "GetProcAddress": {
+        "id": "T1129",
+        "name": "Shared Modules",
+        "url": "https://attack.mitre.org/techniques/T1129/",
+    },
+    "LoadLibraryA": {
+        "id": "T1129",
+        "name": "Shared Modules",
+        "url": "https://attack.mitre.org/techniques/T1129/",
+    },
 }
 
 SUSPICIOUS_PATTERNS = [
@@ -391,8 +523,11 @@ SUSPICIOUS_PATTERNS = [
 ]
 
 HIGH_SEVERITY_IMPORTS = {
-    "CreateRemoteThread", "VirtualAllocEx", "WriteProcessMemory",
-    "URLDownloadToFile", "SetWindowsHookEx",
+    "CreateRemoteThread",
+    "VirtualAllocEx",
+    "WriteProcessMemory",
+    "URLDownloadToFile",
+    "SetWindowsHookEx",
 }
 
 
@@ -418,11 +553,15 @@ def extract_suspicious_strings(file_path: str) -> dict:
                         func_name = f"Ordinal_{imp.ordinal}"
                     for danger in DANGEROUS_IMPORTS:
                         if func_name.lower().startswith(danger.lower()):
-                            dangerous_found.append({
-                                "function": func_name,
-                                "dll": dll_name,
-                                "severity": "high" if danger in HIGH_SEVERITY_IMPORTS else "medium",
-                            })
+                            dangerous_found.append(
+                                {
+                                    "function": func_name,
+                                    "dll": dll_name,
+                                    "severity": "high"
+                                    if danger in HIGH_SEVERITY_IMPORTS
+                                    else "medium",
+                                }
+                            )
                             break
                     for mitre_func, mitre_data in MITRE_MAPPING.items():
                         if mitre_func.lower() in func_name.lower():
@@ -464,9 +603,12 @@ def extract_suspicious_strings(file_path: str) -> dict:
             "suspicious_count": len(deduped),
             "mitre_count": len(mitre_techniques),
             "risk_level": (
-                "critical" if risk_score >= 70
-                else "high" if risk_score >= 40
-                else "medium" if risk_score >= 20
+                "critical"
+                if risk_score >= 70
+                else "high"
+                if risk_score >= 40
+                else "medium"
+                if risk_score >= 20
                 else "low"
             ),
         },
