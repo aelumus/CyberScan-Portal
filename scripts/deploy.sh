@@ -14,7 +14,7 @@ echo "=== Building containers ==="
 docker compose build
 
 echo "=== Restarting services ==="
-docker compose up -d
+docker compose up -d --force-recreate
 
 echo "=== Cleaning old images ==="
 docker image prune -f
