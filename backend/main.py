@@ -19,6 +19,8 @@ from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from prometheus_client import Counter, Gauge
+from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel
 
 from scan_engine import (
@@ -57,6 +59,25 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+# ── Prometheus Metrics ─────────────────────────────────────────────────────────
+# Auto-instrument all HTTP endpoints (latency, request count, in-progress, etc.)
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+
+# Custom application-specific metrics
+SCAN_QUEUE_DEPTH = Gauge(
+    "cyberscan_scan_queue_depth",
+    "Number of scans waiting in the queue (status=pending)",
+)
+SCANS_TOTAL = Counter(
+    "cyberscan_scans_total",
+    "Total scans processed",
+    ["status"],  # labels: completed, failed
+)
+WORKER_ACTIVE = Gauge(
+    "cyberscan_worker_active",
+    "Number of scans currently being processed (status=processing)",
 )
 
 UPLOAD_DIR = settings.upload_dir
@@ -318,6 +339,19 @@ CONFUSION_DATA = {
 # ── Routes ────────────────────────────────────────────────────────────────────
 @app.get("/api/health")
 def health():
+    # Refresh custom Prometheus gauges from DB
+    try:
+        with sqlite3.connect(str(DB_PATH)) as conn:
+            pending = conn.execute(
+                "SELECT COUNT(*) FROM scans WHERE status = 'pending'"
+            ).fetchone()[0]
+            processing = conn.execute(
+                "SELECT COUNT(*) FROM scans WHERE status = 'processing'"
+            ).fetchone()[0]
+        SCAN_QUEUE_DEPTH.set(pending)
+        WORKER_ACTIVE.set(processing)
+    except Exception:
+        pass
     return {
         "status": "ok",
         "models_loaded": list(REAL_MODELS.keys()),
