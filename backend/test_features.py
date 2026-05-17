@@ -24,7 +24,9 @@ print("Columns match expected:", list(df.columns) == list(DS1_FEATURE_COLS))
 for key in list(REAL_MODELS.keys()):
     pred = predict_ds1(df, key, 0.5)
     if pred:
-        print(f"  {key}: score={pred['score']} label={pred['label']} real_model={pred['using_real_model']}")
+        print(
+            f"  {key}: score={pred['score']} label={pred['label']} real_model={pred['using_real_model']}"
+        )
     else:
         print(f"  {key}: returned None")
 

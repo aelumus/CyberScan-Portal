@@ -31,6 +31,7 @@ from settings import settings
 
 try:
     import yara
+
     HAS_YARA = True
 except ImportError:
     HAS_YARA = False
@@ -38,6 +39,7 @@ except ImportError:
 
 try:
     from jose import JWTError, jwt
+
     HAS_AUTH = True
 except ImportError:
     HAS_AUTH = False
@@ -59,9 +61,13 @@ if "cyberscan_scan_queue_depth" in REGISTRY._names_to_collectors:
     SCANS_TOTAL = REGISTRY._names_to_collectors["cyberscan_scans_total"]
     WORKER_ACTIVE = REGISTRY._names_to_collectors["cyberscan_worker_active"]
 else:
-    SCAN_QUEUE_DEPTH = Gauge("cyberscan_scan_queue_depth", "Number of scans waiting in the queue (status=pending)")
+    SCAN_QUEUE_DEPTH = Gauge(
+        "cyberscan_scan_queue_depth", "Number of scans waiting in the queue (status=pending)"
+    )
     SCANS_TOTAL = Counter("cyberscan_scans_total", "Total scans processed", ["status"])
-    WORKER_ACTIVE = Gauge("cyberscan_worker_active", "Number of scans currently being processed (status=processing)")
+    WORKER_ACTIVE = Gauge(
+        "cyberscan_worker_active", "Number of scans currently being processed (status=processing)"
+    )
 
 UPLOAD_DIR = settings.upload_dir
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -225,7 +231,12 @@ def _create_user(username: str, email: str, password: str) -> dict:
                 (username, email.lower(), pw_hash, now),
             )
             conn.commit()
-            return {"id": cur.lastrowid, "username": username, "email": email.lower(), "created_at": now}
+            return {
+                "id": cur.lastrowid,
+                "username": username,
+                "email": email.lower(),
+                "created_at": now,
+            }
         except sqlite3.IntegrityError as exc:
             raise ValueError(str(exc)) from exc
 
@@ -238,7 +249,13 @@ def _get_user_by_email(email: str) -> dict | None:
         ).fetchone()
     if not row:
         return None
-    return {"id": row[0], "username": row[1], "email": row[2], "hashed_password": row[3], "created_at": row[4]}
+    return {
+        "id": row[0],
+        "username": row[1],
+        "email": row[2],
+        "hashed_password": row[3],
+        "created_at": row[4],
+    }
 
 
 def _get_user_by_id(user_id: int) -> dict | None:
@@ -259,6 +276,7 @@ def get_shap_explainer():
     if _SHAP_EXPLAINER is None and "ds1_rf" in REAL_MODELS:
         try:
             import shap
+
             _SHAP_EXPLAINER = shap.TreeExplainer(REAL_MODELS["ds1_rf"])
             print("[shap] TreeExplainer initialized")
         except Exception as exc:
@@ -297,8 +315,8 @@ ROC_DATA = {
 }
 
 CONFUSION_DATA = {
-    "ds1_rf":   {"tp": 5097, "fp": 21, "tn": 5120, "fn": 44, "total": 10282},
-    "ds1_xgb":  {"tp": 5108, "fp": 16, "tn": 5125, "fn": 33, "total": 10282},
+    "ds1_rf": {"tp": 5097, "fp": 21, "tn": 5120, "fn": 44, "total": 10282},
+    "ds1_xgb": {"tp": 5108, "fp": 16, "tn": 5125, "fn": 33, "total": 10282},
     "ds1_lgbm": {"tp": 5115, "fp": 11, "tn": 5130, "fn": 26, "total": 10282},
 }
 
@@ -307,13 +325,22 @@ CONFUSION_DATA = {
 def health():
     try:
         with sqlite3.connect(str(DB_PATH)) as conn:
-            pending = conn.execute("SELECT COUNT(*) FROM scans WHERE status = 'pending'").fetchone()[0]
-            processing = conn.execute("SELECT COUNT(*) FROM scans WHERE status = 'processing'").fetchone()[0]
+            pending = conn.execute(
+                "SELECT COUNT(*) FROM scans WHERE status = 'pending'"
+            ).fetchone()[0]
+            processing = conn.execute(
+                "SELECT COUNT(*) FROM scans WHERE status = 'processing'"
+            ).fetchone()[0]
         SCAN_QUEUE_DEPTH.set(pending)
         WORKER_ACTIVE.set(processing)
     except Exception:
         pass
-    return {"status": "ok", "models_loaded": list(REAL_MODELS.keys()), "version": settings.app_version, "auth": HAS_AUTH}
+    return {
+        "status": "ok",
+        "models_loaded": list(REAL_MODELS.keys()),
+        "version": settings.app_version,
+        "auth": HAS_AUTH,
+    }
 
 
 @app.post("/api/auth/register")
@@ -331,7 +358,14 @@ def register(
     try:
         new_user = _create_user(username.strip(), email.strip(), password)
         token = _create_token(new_user["id"], new_user["username"])
-        return {"token": token, "user": {"id": new_user["id"], "username": new_user["username"], "email": new_user["email"]}}
+        return {
+            "token": token,
+            "user": {
+                "id": new_user["id"],
+                "username": new_user["username"],
+                "email": new_user["email"],
+            },
+        }
     except ValueError as exc:
         print(f"[debug] Exception during registration: {repr(exc)}")
         err_str = str(exc).lower()
@@ -350,13 +384,18 @@ def login(email: str = Form(...), password: str = Form(...)):
     if not db_user or not _verify_password(password, db_user["hashed_password"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     token = _create_token(db_user["id"], db_user["username"])
-    return {"token": token, "user": {"id": db_user["id"], "username": db_user["username"], "email": db_user["email"]}}
+    return {
+        "token": token,
+        "user": {"id": db_user["id"], "username": db_user["username"], "email": db_user["email"]},
+    }
 
 
 @app.get("/api/auth/debug")
 def debug_db():
     with sqlite3.connect(str(DB_PATH)) as conn:
-        schema = conn.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'").fetchone()
+        schema = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='users'"
+        ).fetchone()
         rows = conn.execute("SELECT * FROM users LIMIT 10").fetchall()
         return {"schema": schema[0] if schema else None, "data": rows}
 
@@ -377,7 +416,9 @@ def dashboard_stats():
     total = len(completed_scans)
     malicious_count = sum(1 for s in completed_scans if s.get("verdict") == "Malicious")
     detection_rate = round(malicious_count / total * 100, 1) if total else 0.0
-    avg_scan_time = round(sum(s.get("scan_time", 0) for s in completed_scans) / total, 2) if total else 0.0
+    avg_scan_time = (
+        round(sum(s.get("scan_time", 0) for s in completed_scans) / total, 2) if total else 0.0
+    )
     return {
         "total_scans": total,
         "malicious_rate": detection_rate,
@@ -435,14 +476,19 @@ def get_scan_strings(scan_id: str):
 def get_scan_shap(scan_id: str):
     scan_doc = _require_scan(scan_id)
     if "shap_values" in scan_doc:
-        return {"shap_values": scan_doc["shap_values"], "expected_value": scan_doc.get("shap_expected", 0)}
+        return {
+            "shap_values": scan_doc["shap_values"],
+            "expected_value": scan_doc.get("shap_expected", 0),
+        }
     upload_path = _find_upload(scan_id, "File not available for SHAP analysis")
     feat_df = extract_ds1_features(str(upload_path))
     if feat_df is None:
         raise HTTPException(status_code=422, detail="PE parsing failed")
     explainer = get_shap_explainer()
     if explainer is None:
-        raise HTTPException(status_code=503, detail="SHAP explainer not available (RF model not loaded)")
+        raise HTTPException(
+            status_code=503, detail="SHAP explainer not available (RF model not loaded)"
+        )
     try:
         shap_vals = explainer.shap_values(feat_df)
         if isinstance(shap_vals, list):
@@ -453,11 +499,13 @@ def get_scan_shap(scan_id: str):
             expected = float(explainer.expected_value)
         shap_entries = []
         for feat_name, shap_val, feat_val in zip(DS1_FEATURE_COLS, vals, feat_df.iloc[0].values):
-            shap_entries.append({
-                "feature": feat_name,
-                "shap_value": round(float(shap_val), 5),
-                "feature_value": round(float(feat_val), 4),
-            })
+            shap_entries.append(
+                {
+                    "feature": feat_name,
+                    "shap_value": round(float(shap_val), 5),
+                    "feature_value": round(float(feat_val), 4),
+                }
+            )
         shap_entries.sort(key=lambda x: abs(x["shap_value"]), reverse=True)
         top15 = shap_entries[:15]
         scan_doc["shap_values"] = top15
@@ -480,18 +528,32 @@ def download_pdf(scan_id: str, current_user: dict | None = Depends(get_current_u
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
         from reportlab.lib.units import cm
-        from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+        from reportlab.platypus import (
+            HRFlowable,
+            Paragraph,
+            SimpleDocTemplate,
+            Spacer,
+            Table,
+            TableStyle,
+        )
 
         buf = io.BytesIO()
-        doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=2*cm, rightMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
+        doc = SimpleDocTemplate(
+            buf,
+            pagesize=A4,
+            leftMargin=2 * cm,
+            rightMargin=2 * cm,
+            topMargin=2 * cm,
+            bottomMargin=2 * cm,
+        )
         styles = getSampleStyleSheet()
 
-        DARK   = colors.HexColor("#1e1b4b")
+        DARK = colors.HexColor("#1e1b4b")
         ACCENT = colors.HexColor("#4f46e5")
-        RED    = colors.HexColor("#ef4444")
-        GREEN  = colors.HexColor("#10b981")
-        AMBER  = colors.HexColor("#f59e0b")
-        GRAY   = colors.HexColor("#64748b")
+        RED = colors.HexColor("#ef4444")
+        GREEN = colors.HexColor("#10b981")
+        AMBER = colors.HexColor("#f59e0b")
+        GRAY = colors.HexColor("#64748b")
 
         verdict = scan_doc["verdict"]
         if verdict == "Malicious":
@@ -501,10 +563,30 @@ def download_pdf(scan_id: str, current_user: dict | None = Depends(get_current_u
         else:
             verdict_color = GREEN
 
-        title_style = ParagraphStyle("title", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=22, textColor=DARK, spaceAfter=4, alignment=TA_LEFT)
-        subtitle_style = ParagraphStyle("sub", parent=styles["Normal"], fontName="Helvetica", fontSize=10, textColor=GRAY)
-        section_style = ParagraphStyle("section", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=12, textColor=ACCENT, spaceBefore=14, spaceAfter=6)
-        ParagraphStyle("body", parent=styles["Normal"], fontName="Helvetica", fontSize=9, textColor=DARK)
+        title_style = ParagraphStyle(
+            "title",
+            parent=styles["Normal"],
+            fontName="Helvetica-Bold",
+            fontSize=22,
+            textColor=DARK,
+            spaceAfter=4,
+            alignment=TA_LEFT,
+        )
+        subtitle_style = ParagraphStyle(
+            "sub", parent=styles["Normal"], fontName="Helvetica", fontSize=10, textColor=GRAY
+        )
+        section_style = ParagraphStyle(
+            "section",
+            parent=styles["Normal"],
+            fontName="Helvetica-Bold",
+            fontSize=12,
+            textColor=ACCENT,
+            spaceBefore=14,
+            spaceAfter=6,
+        )
+        ParagraphStyle(
+            "body", parent=styles["Normal"], fontName="Helvetica", fontSize=9, textColor=DARK
+        )
 
         story = []
         story.append(Paragraph("CyberScan Portal", title_style))
@@ -515,13 +597,20 @@ def download_pdf(scan_id: str, current_user: dict | None = Depends(get_current_u
 
         story.append(Paragraph("VERDICT", section_style))
         verdict_table = Table(
-            [[
-                Paragraph(verdict.upper(), ParagraphStyle("v", fontName="Helvetica-Bold", fontSize=20, textColor=verdict_color)),
-                Paragraph(
-                    f"Risk: {scan_doc.get('risk_level', '—').upper()}\nScore: {round(scan_doc.get('score', 0) * 100, 1)}%",
-                    ParagraphStyle("r", fontName="Helvetica", fontSize=11, textColor=GRAY),
-                ),
-            ]],
+            [
+                [
+                    Paragraph(
+                        verdict.upper(),
+                        ParagraphStyle(
+                            "v", fontName="Helvetica-Bold", fontSize=20, textColor=verdict_color
+                        ),
+                    ),
+                    Paragraph(
+                        f"Risk: {scan_doc.get('risk_level', '—').upper()}\nScore: {round(scan_doc.get('score', 0) * 100, 1)}%",
+                        ParagraphStyle("r", fontName="Helvetica", fontSize=11, textColor=GRAY),
+                    ),
+                ]
+            ],
             colWidths=[8 * cm, 9 * cm],
         )
         verdict_table.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
@@ -541,18 +630,20 @@ def download_pdf(scan_id: str, current_user: dict | None = Depends(get_current_u
             ["Threshold", str(scan_doc.get("threshold", "—"))],
             ["PE Parse OK", "Yes" if scan_doc.get("pe_parse_ok") else "No"],
         ]
-        tbl_style = TableStyle([
-            ("BACKGROUND",   (0, 0), (-1, 0), ACCENT),
-            ("TEXTCOLOR",    (0, 0), (-1, 0), colors.white),
-            ("FONTNAME",     (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE",     (0, 0), (-1, -1), 9),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
-            ("GRID",         (0, 0), (-1, -1), 0.3, colors.HexColor("#e2e8f0")),
-            ("LEFTPADDING",  (0, 0), (-1, -1), 8),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-            ("TOPPADDING",   (0, 0), (-1, -1), 5),
-            ("BOTTOMPADDING",(0, 0), (-1, -1), 5),
-        ])
+        tbl_style = TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), ACCENT),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
+                ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#e2e8f0")),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ]
+        )
         info_table = Table(info_rows, colWidths=[5 * cm, 12 * cm])
         info_table.setStyle(tbl_style)
         story.append(info_table)
@@ -561,12 +652,14 @@ def download_pdf(scan_id: str, current_user: dict | None = Depends(get_current_u
             story.append(Paragraph("ML MODEL SCORES", section_style))
             ml_rows = [["Model", "Score", "Triggered", "Real Model"]]
             for ml_pred in scan_doc["ml_results"]:
-                ml_rows.append([
-                    ml_pred.get("name", ml_pred.get("algo", "—")),
-                    f"{round(ml_pred.get('score', 0) * 100, 1)}%",
-                    "YES" if ml_pred.get("triggered") else "no",
-                    "✓" if ml_pred.get("using_real_model") else "mock",
-                ])
+                ml_rows.append(
+                    [
+                        ml_pred.get("name", ml_pred.get("algo", "—")),
+                        f"{round(ml_pred.get('score', 0) * 100, 1)}%",
+                        "YES" if ml_pred.get("triggered") else "no",
+                        "✓" if ml_pred.get("using_real_model") else "mock",
+                    ]
+                )
             ml_table = Table(ml_rows, colWidths=[5 * cm, 3 * cm, 4 * cm, 5 * cm])
             ml_table.setStyle(tbl_style)
             story.append(ml_table)
@@ -576,7 +669,9 @@ def download_pdf(scan_id: str, current_user: dict | None = Depends(get_current_u
             top_feats = scan_doc["features"]["DS1"][:10]
             feat_rows = [["Feature", "Importance"]]
             for feat_entry in top_feats:
-                feat_rows.append([feat_entry["name"], f"{round(feat_entry['importance'] * 100, 2)}%"])
+                feat_rows.append(
+                    [feat_entry["name"], f"{round(feat_entry['importance'] * 100, 2)}%"]
+                )
             feat_table = Table(feat_rows, colWidths=[10 * cm, 7 * cm])
             feat_table.setStyle(tbl_style)
             story.append(feat_table)
@@ -584,15 +679,25 @@ def download_pdf(scan_id: str, current_user: dict | None = Depends(get_current_u
         story.append(Spacer(1, 0.5 * cm))
         story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#e2e8f0")))
         story.append(Spacer(1, 0.2 * cm))
-        story.append(Paragraph(
-            f"Generated by CyberScan Portal v3.0 · {datetime.now().strftime('%Y-%m-%d %H:%M')} · Scan ID: {scan_id}",
-            ParagraphStyle("footer", fontName="Helvetica", fontSize=7, textColor=GRAY, alignment=TA_CENTER),
-        ))
+        story.append(
+            Paragraph(
+                f"Generated by CyberScan Portal v3.0 · {datetime.now().strftime('%Y-%m-%d %H:%M')} · Scan ID: {scan_id}",
+                ParagraphStyle(
+                    "footer", fontName="Helvetica", fontSize=7, textColor=GRAY, alignment=TA_CENTER
+                ),
+            )
+        )
 
         doc.build(story)
         buf.seek(0)
-        out_filename = f"cyberscan_{scan_doc.get('filename', 'report').replace('.', '_')}_{scan_id}.pdf"
-        return StreamingResponse(buf, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename={out_filename}"})
+        out_filename = (
+            f"cyberscan_{scan_doc.get('filename', 'report').replace('.', '_')}_{scan_id}.pdf"
+        )
+        return StreamingResponse(
+            buf,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={out_filename}"},
+        )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"PDF generation failed: {exc}") from exc
 
@@ -639,7 +744,9 @@ async def run_scan(
         "created_at": datetime.now().isoformat(),
     }
     _save_scan(scan_id, scan_doc, user_id=uid, status="pending")
-    return JSONResponse(status_code=202, content={"id": scan_id, "status": "pending", "filename": file.filename})
+    return JSONResponse(
+        status_code=202, content={"id": scan_id, "status": "pending", "filename": file.filename}
+    )
 
 
 class YaraRequest(BaseModel):
@@ -647,20 +754,26 @@ class YaraRequest(BaseModel):
 
 
 @app.post("/api/scans/{scan_id}/yara")
-def run_yara_rule(scan_id: str, request: YaraRequest, current_user: dict | None = Depends(get_current_user)):
+def run_yara_rule(
+    scan_id: str, request: YaraRequest, current_user: dict | None = Depends(get_current_user)
+):
     if not HAS_YARA:
         raise HTTPException(status_code=503, detail="YARA engine is not installed on the server.")
 
     scan_doc = _require_scan(scan_id)
 
-    if scan_doc.get("user_id") and (not current_user or int(current_user["sub"]) != scan_doc["user_id"]):
+    if scan_doc.get("user_id") and (
+        not current_user or int(current_user["sub"]) != scan_doc["user_id"]
+    ):
         raise HTTPException(status_code=403, detail="Not authorized to access this scan")
 
     fname = scan_doc.get("filename") or scan_doc.get("original_filename") or "unknown.exe"
     upload_path = UPLOAD_DIR / f"{scan_id}_{fname}"
 
     if not upload_path.exists():
-        raise HTTPException(status_code=404, detail="Original file not found on server for YARA scanning")
+        raise HTTPException(
+            status_code=404, detail="Original file not found on server for YARA scanning"
+        )
 
     try:
         compiled_rule = yara.compile(source=request.rule)
@@ -678,19 +791,29 @@ def run_yara_rule(scan_id: str, request: YaraRequest, current_user: dict | None 
                 if hasattr(sm, "instances") and hasattr(sm, "identifier"):
                     for inst in sm.instances[:2]:
                         matched_bytes = getattr(inst, "matched_data", b"")
-                        str_matches.append({
-                            "offset": getattr(inst, "offset", 0),
-                            "identifier": sm.identifier,
-                            "data": matched_bytes.decode("ascii", errors="ignore") if isinstance(matched_bytes, bytes) else str(matched_bytes),
-                        })
+                        str_matches.append(
+                            {
+                                "offset": getattr(inst, "offset", 0),
+                                "identifier": sm.identifier,
+                                "data": matched_bytes.decode("ascii", errors="ignore")
+                                if isinstance(matched_bytes, bytes)
+                                else str(matched_bytes),
+                            }
+                        )
                 else:
                     with contextlib.suppress(Exception):
-                        str_matches.append({
-                            "offset": sm[0],
-                            "identifier": sm[1],
-                            "data": sm[2].decode("ascii", errors="ignore") if isinstance(sm[2], bytes) else str(sm[2]),
-                        })
-            match_results.append({"rule": m.rule, "tags": m.tags, "meta": m.meta, "strings": str_matches})
+                        str_matches.append(
+                            {
+                                "offset": sm[0],
+                                "identifier": sm[1],
+                                "data": sm[2].decode("ascii", errors="ignore")
+                                if isinstance(sm[2], bytes)
+                                else str(sm[2]),
+                            }
+                        )
+            match_results.append(
+                {"rule": m.rule, "tags": m.tags, "meta": m.meta, "strings": str_matches}
+            )
         return {"success": True, "error": None, "matches": match_results}
     except Exception as exc:
         return {"success": False, "error": f"YARA Execution Error: {str(exc)}", "matches": []}
@@ -700,12 +823,14 @@ def run_yara_rule(scan_id: str, request: YaraRequest, current_user: dict | None 
 def get_models():
     model_list = []
     for key in MODEL_ORDER:
-        model_list.append({
-            "id": key,
-            **MODEL_REGISTRY[key],
-            "metrics": MOCK_METRICS[key],
-            "loaded": key in REAL_MODELS,
-        })
+        model_list.append(
+            {
+                "id": key,
+                **MODEL_REGISTRY[key],
+                "metrics": MOCK_METRICS[key],
+                "loaded": key in REAL_MODELS,
+            }
+        )
     return {"models": model_list}
 
 
