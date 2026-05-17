@@ -9,7 +9,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         const saved = localStorage.getItem("cs-theme") as Theme | null;
-        if (saved) setTheme(saved);
+        if (saved) queueMicrotask(() => setTheme(saved));
     }, []);
 
     useEffect(() => {

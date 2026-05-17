@@ -70,6 +70,7 @@ export default function ScanDetailPage() {
             pollRef.current = setInterval(fetchScan, 2000);
         }
         return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [scan?.status, fetchScan]);
 
     useEffect(() => {
