@@ -1,30 +1,32 @@
 import type { RiskLevel, Verdict } from "@/lib/types";
 
 export function VerdictBadge({ verdict }: { verdict: Verdict | string }) {
-    const styles: Record<string, React.CSSProperties> = {
+    type ColorMap = Record<string, React.CSSProperties>;
+    const colorMap: ColorMap = {
         Malicious: { background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.28)", color: "#f87171" },
         Suspicious: { background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.28)", color: "#fbbf24" },
         Benign: { background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.28)", color: "#34d399" },
         Unknown: { background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-3)" },
     };
-    const s = styles[verdict] ?? styles.Unknown;
+    const style = colorMap[verdict] ?? colorMap.Unknown;
     return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold" style={s}>
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold" style={style}>
             {verdict}
         </span>
     );
 }
 
 export function RiskBadge({ level }: { level: RiskLevel | string }) {
-    const styles: Record<string, React.CSSProperties> = {
+    type ColorMap = Record<string, React.CSSProperties>;
+    const colorMap: ColorMap = {
         critical: { background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171" },
         high: { background: "rgba(249,115,22,0.15)", border: "1px solid rgba(249,115,22,0.3)", color: "#fb923c" },
         medium: { background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.3)", color: "#fbbf24" },
         low: { background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.3)", color: "#34d399" },
     };
-    const s = styles[level?.toLowerCase()] ?? styles.low;
+    const style = colorMap[level?.toLowerCase()] ?? colorMap.low;
     return (
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide" style={s}>
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide" style={style}>
             {level} Risk
         </span>
     );

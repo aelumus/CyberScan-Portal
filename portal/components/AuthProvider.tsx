@@ -4,9 +4,9 @@ import { useRouter } from "next/navigation";
 import { buildApiUrl, postForm } from "@/lib/api";
 import type { AuthResponse, User } from "@/lib/types";
 
-const TOKEN_STORAGE_KEY = "cs-token";
+const TOKEN_KEY = "cs-token";
 
-interface AuthContextType {
+interface AuthCtxType {
     user: User | null;
     token: string | null;
     loading: boolean;
@@ -16,7 +16,7 @@ interface AuthContextType {
     authHeaders: () => Record<string, string>;
 }
 
-const AuthCtx = createContext<AuthContextType | null>(null);
+const AuthCtx = createContext<AuthCtxType | null>(null);
 
 export function useAuth() {
     const ctx = useContext(AuthCtx);
@@ -31,81 +31,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const router = useRouter();
 
     const clearSession = useCallback(() => {
-        localStorage.removeItem(TOKEN_STORAGE_KEY);
+        localStorage.removeItem(TOKEN_KEY);
         setToken(null);
         setUser(null);
     }, []);
 
-    const persistSession = useCallback((session: AuthResponse) => {
-        localStorage.setItem(TOKEN_STORAGE_KEY, session.token);
+    const saveSession = useCallback((session: AuthResponse) => {
+        localStorage.setItem(TOKEN_KEY, session.token);
         setToken(session.token);
         setUser(session.user);
     }, []);
 
-    // Validate saved token on mount
     useEffect(() => {
-        let isActive = true;
-
-        const validateSession = async () => {
-            const savedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
-
-            if (!savedToken) {
-                if (isActive) {
-                    setLoading(false);
-                }
-                return;
-            }
-
+        let alive = true;
+        const checkToken = async () => {
+            const saved = localStorage.getItem(TOKEN_KEY);
+            if (!saved) { if (alive) setLoading(false); return; }
             try {
-                const response = await fetch(buildApiUrl("/api/auth/me"), {
-                    headers: { Authorization: `Bearer ${savedToken}` },
-                });
-
-                const data = response.ok ? ((await response.json()) as User) : null;
-
-                if (!isActive) {
-                    return;
-                }
-
-                if (data) {
-                    setToken(savedToken);
-                    setUser(data);
-                } else {
-                    clearSession();
-                }
+                const resp = await fetch(buildApiUrl("/api/auth/me"), { headers: { Authorization: `Bearer ${saved}` } });
+                const userData = resp.ok ? ((await resp.json()) as User) : null;
+                if (!alive) return;
+                if (userData) { setToken(saved); setUser(userData); }
+                else clearSession();
             } catch {
-                if (isActive) {
-                    clearSession();
-                }
+                if (alive) clearSession();
             } finally {
-                if (isActive) {
-                    setLoading(false);
-                }
+                if (alive) setLoading(false);
             }
         };
-
-        void validateSession();
-
-        return () => {
-            isActive = false;
-        };
+        void checkToken();
+        return () => { alive = false; };
     }, [clearSession]);
 
     const login = useCallback(async (email: string, password: string) => {
-        const data = await postForm<AuthResponse>("/api/auth/login", { email, password });
-        persistSession(data);
+        const resp = await postForm<AuthResponse>("/api/auth/login", { email, password });
+        saveSession(resp);
         router.push("/dashboard");
-    }, [persistSession, router]);
+    }, [saveSession, router]);
 
     const register = useCallback(async (username: string, email: string, password: string) => {
-        const data = await postForm<AuthResponse>("/api/auth/register", {
-            username,
-            email,
-            password,
-        });
-        persistSession(data);
+        const resp = await postForm<AuthResponse>("/api/auth/register", { username, email, password });
+        saveSession(resp);
         router.push("/dashboard");
-    }, [persistSession, router]);
+    }, [saveSession, router]);
 
     const logout = useCallback(() => {
         clearSession();

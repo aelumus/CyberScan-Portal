@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { getJson } from "@/lib/api";
@@ -11,28 +10,12 @@ export function useScans() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        let isActive = true;
-
+        let alive = true;
         getJson<ScansResponse>("/api/scans", { headers: authHeaders() })
-            .then((data) => {
-                if (isActive) {
-                    setScans(data.scans ?? []);
-                }
-            })
-            .catch(() => {
-                if (isActive) {
-                    setScans([]);
-                }
-            })
-            .finally(() => {
-                if (isActive) {
-                    setLoading(false);
-                }
-            });
-
-        return () => {
-            isActive = false;
-        };
+            .then(resp => { if (alive) setScans(resp.scans ?? []); })
+            .catch(() => { if (alive) setScans([]); })
+            .finally(() => { if (alive) setLoading(false); });
+        return () => { alive = false; };
     }, [authHeaders]);
 
     return { scans, loading };

@@ -1,5 +1,6 @@
-export type Verdict = "Malicious" | "Suspicious" | "Benign" | "Unknown";
+export type Verdict   = "Malicious" | "Suspicious" | "Benign" | "Unknown";
 export type RiskLevel = "critical" | "high" | "medium" | "low";
+export type ScanStatus = "pending" | "processing" | "completed" | "failed";
 
 export interface User {
     id: number;
@@ -110,8 +111,6 @@ export interface YaraResponse {
     matches: YaraMatch[];
 }
 
-export type ScanStatus = "pending" | "processing" | "completed" | "failed";
-
 export interface ScanRecord {
     id: string;
     filename: string;
@@ -131,10 +130,7 @@ export interface ScanRecord {
     ml_results?: ScanModelResult[];
     features?: ScanFeatures;
     vt_result?: VirusTotalResult | null;
-    models_used?: {
-        ds1?: boolean;
-        vt?: boolean;
-    };
+    models_used?: { ds1?: boolean; vt?: boolean };
     pe_parse_ok?: boolean;
     strings_analysis?: StringsAnalysis;
     shap_values?: ShapValue[];

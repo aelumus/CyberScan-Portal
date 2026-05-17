@@ -1,77 +1,51 @@
 "use client";
-import { useEffect, useState, type ReactNode } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
+import type { ReactNode } from "react";
+import { Loader2 } from "lucide-react";
 
-function AuthGuard({ children }: { children: ReactNode }) {
-    const { user, loading } = useAuth();
+export default function AppLayout({ children }: { children: ReactNode }) {
+    const { loading, user } = useAuth();
     const router = useRouter();
-    const pathname = usePathname();
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-    // Close sidebar on route change on mobile
-    useEffect(() => {
-        const timeoutId = window.setTimeout(() => {
-            setIsSidebarOpen(false);
-        }, 0);
-
-        return () => {
-            window.clearTimeout(timeoutId);
-        };
-    }, [pathname]);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
 
     useEffect(() => {
-        if (!loading && !user) {
-            router.push("/login");
-        }
-    }, [user, loading, router]);
+        if (!loading && !user) router.push("/login");
+    }, [loading, user, router]);
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen" style={{ background: "var(--bg-grad)" }}>
-                <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center animate-pulse"
-                        style={{ background: "linear-gradient(135deg,#4f46e5,#7c3aed)" }}>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                        </svg>
-                    </div>
-                    <p className="text-xs font-medium" style={{ color: "var(--text-3)" }}>Authenticating…</p>
+    if (loading) return (
+        <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg-grad)" }}>
+            <div className="flex flex-col items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                    style={{ background: "linear-gradient(135deg,#4f46e5,#7c3aed)" }}>
+                    <Loader2 size={22} className="text-white animate-spin" />
                 </div>
+                <p className="text-sm" style={{ color: "var(--text-3)" }}>Loading CyberScan…</p>
             </div>
-        );
-    }
+        </div>
+    );
 
     if (!user) return null;
 
     return (
-        <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-grad)" }}>
-            {/* Mobile Overlay */}
-            {isSidebarOpen && (
-                <div
-                    className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
-                    onClick={() => setIsSidebarOpen(false)}
-                />
-            )}
-
-            {/* Sidebar */}
-            <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out md:static md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-                <Sidebar onClose={() => setIsSidebarOpen(false)} />
+        <div className="flex min-h-screen" style={{ background: "var(--bg)" }}>
+            <div className={`fixed inset-0 z-40 md:hidden transition-opacity duration-300 ${sidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+                style={{ background: "rgba(0,0,0,0.5)" }}
+                onClick={() => setSidebarOpen(false)} />
+            <div className={`fixed left-0 top-0 z-50 h-full transition-transform duration-300 md:hidden ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+                <Sidebar onClose={() => setSidebarOpen(false)} />
             </div>
-
-            {/* Main Content */}
-            <div className="flex flex-col flex-1 h-screen overflow-hidden min-w-0">
-                <Topbar onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
-                <main className="flex-1 overflow-x-hidden overflow-y-auto bg-transparent p-4 md:p-6" id="main-scroll">
-                    {children}
-                </main>
+            <div className="hidden md:flex">
+                <Sidebar />
+            </div>
+            <div className="flex-1 flex flex-col min-h-screen min-w-0">
+                <Topbar onMenuClick={() => setSidebarOpen(true)} />
+                <main className="flex-1 p-6 overflow-auto">{children}</main>
             </div>
         </div>
     );
-}
-
-export default function AppLayout({ children }: { children: ReactNode }) {
-    return <AuthGuard>{children}</AuthGuard>;
 }

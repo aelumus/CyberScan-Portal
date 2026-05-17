@@ -1,26 +1,25 @@
 "use client";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import React, { useEffect, useRef, useState } from "react";
 import { VerdictBadge, ScoreBar } from "@/components/Badges";
 import { Activity, Clock, Cpu, ArrowUpRight, TrendingUp, AlertTriangle, CheckCircle, Zap } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { useScans } from "@/hooks/useScans";
 import type { ScanRecord } from "@/lib/types";
 
-/* ─── CountUp animated number ─── */
 function CountUp({ target, suffix = "", decimals = 0 }: { target: number; suffix?: string; decimals?: number }) {
     const [val, setVal] = useState(0);
     const ref = useRef<HTMLSpanElement>(null);
     useEffect(() => {
-        if (target === 0) return;
+        if (!target) return;
         const obs = new IntersectionObserver(([e]) => {
             if (!e.isIntersecting) return;
-            let start = 0;
+            let cur = 0;
             const step = target / 50;
-            const t = setInterval(() => {
-                start = Math.min(start + step, target);
-                setVal(start);
-                if (start >= target) clearInterval(t);
+            const timer = setInterval(() => {
+                cur = Math.min(cur + step, target);
+                setVal(cur);
+                if (cur >= target) clearInterval(timer);
             }, 20);
             obs.disconnect();
         }, { threshold: 0.5 });
@@ -30,7 +29,7 @@ function CountUp({ target, suffix = "", decimals = 0 }: { target: number; suffix
     return <span ref={ref}>{val.toFixed(decimals)}{suffix}</span>;
 }
 
-const CHART_DATA = [
+const CHART_MOCK = [
     { date: "Mar 5", scans: 28, malicious: 4 },
     { date: "Mar 6", scans: 35, malicious: 8 },
     { date: "Mar 7", scans: 22, malicious: 3 },
@@ -40,8 +39,8 @@ const CHART_DATA = [
     { date: "Mar 11", scans: 41, malicious: 7 },
 ];
 
-function StatCard({ label, value, icon: Icon, color, glow, sub, animTarget, suffix = "", decimals = 0 }: {
-    label: string; value?: string; animTarget?: number; suffix?: string; decimals?: number;
+function StatCard({ label, animTarget, suffix = "", decimals = 0, icon: Icon, color, glow, sub }: {
+    label: string; animTarget: number; suffix?: string; decimals?: number;
     icon: React.ElementType; color: string; glow: string; sub?: string;
 }) {
     return (
@@ -57,9 +56,7 @@ function StatCard({ label, value, icon: Icon, color, glow, sub, animTarget, suff
                 <ArrowUpRight size={14} style={{ color: "var(--text-3)" }} />
             </div>
             <div className="text-2xl font-black mb-0.5" style={{ color: "var(--text)" }}>
-                {animTarget !== undefined
-                    ? <CountUp target={animTarget} suffix={suffix} decimals={decimals} />
-                    : value}
+                <CountUp target={animTarget} suffix={suffix} decimals={decimals} />
             </div>
             <div className="text-xs font-medium" style={{ color: "var(--text-2)" }}>{label}</div>
             {sub && <div className="text-xs mt-0.5" style={{ color: "var(--text-3)" }}>{sub}</div>}
@@ -69,16 +66,13 @@ function StatCard({ label, value, icon: Icon, color, glow, sub, animTarget, suff
 
 export default function DashboardPage() {
     const { scans } = useScans();
-
     const total = scans.length;
     const malicious = scans.filter(s => s.verdict === "Malicious").length;
-    const totalScanTime = scans.reduce((sum, scan) => sum + Number(scan.scan_time ?? 0), 0);
-    const averageScanTime = total > 0 ? totalScanTime / total : 0;
+    const avgTime = total > 0 ? scans.reduce((s, r) => s + Number(r.scan_time ?? 0), 0) / total : 0;
     const recent: ScanRecord[] = scans.slice(-5).reverse();
 
     return (
         <div className="space-y-6 max-w-6xl mx-auto">
-            {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
                     <div className="flex items-center gap-2 mb-1">
@@ -95,19 +89,15 @@ export default function DashboardPage() {
                 </Link>
             </div>
 
-            {/* Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard label="Total Scans" animTarget={total} suffix="" icon={Activity} color="#818cf8" glow="#4f46e5" sub="this session" />
-                <StatCard label="Malicious Rate"
-                    animTarget={total > 0 ? parseFloat(((malicious / total) * 100).toFixed(1)) : 0}
+                <StatCard label="Total Scans" animTarget={total} icon={Activity} color="#818cf8" glow="#4f46e5" sub="this session" />
+                <StatCard label="Malicious Rate" animTarget={total > 0 ? parseFloat(((malicious / total) * 100).toFixed(1)) : 0}
                     suffix="%" decimals={1} icon={AlertTriangle} color="#f87171" glow="#ef4444" sub="of scanned files" />
-                <StatCard label="Avg Scan Time"
-                    animTarget={total > 0 ? parseFloat(averageScanTime.toFixed(1)) : 0}
+                <StatCard label="Avg Scan Time" animTarget={total > 0 ? parseFloat(avgTime.toFixed(1)) : 0}
                     suffix="s" decimals={1} icon={Clock} color="#fbbf24" glow="#f59e0b" sub="per file" />
                 <StatCard label="Models Online" animTarget={3} suffix=" / 3" icon={Cpu} color="#34d399" glow="#10b981" sub="RF · XGB · LGB" />
             </div>
 
-            {/* Chart */}
             <div className="glass rounded-2xl p-5">
                 <div className="flex items-center justify-between mb-5">
                     <div>
@@ -117,7 +107,7 @@ export default function DashboardPage() {
                     <TrendingUp size={16} className="text-indigo-400" />
                 </div>
                 <ResponsiveContainer width="100%" height={200}>
-                    <AreaChart data={CHART_DATA}>
+                    <AreaChart data={CHART_MOCK}>
                         <defs>
                             <linearGradient id="gTotal" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
@@ -138,7 +128,6 @@ export default function DashboardPage() {
                 </ResponsiveContainer>
             </div>
 
-            {/* Recent Scans */}
             <div className="glass rounded-2xl overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
                     <h2 className="text-sm font-bold" style={{ color: "var(--text)" }}>Latest Scans</h2>
@@ -152,9 +141,10 @@ export default function DashboardPage() {
                     </div>
                 ) : (
                     <div className="divide-y" style={{ borderColor: "var(--border)" }}>
-                        {recent.map((scan) => (
+                        {recent.map(scan => (
                             <div key={scan.id} className="flex items-center gap-4 px-5 py-3 transition-colors group"
-                                style={{ ["&:hover" as string]: { background: "var(--surface-2)" } }}>
+                                onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
+                                onMouseLeave={e => (e.currentTarget.style.background = "")}>
                                 <div className="flex-1 min-w-0">
                                     <div className="font-medium text-sm truncate" style={{ color: "var(--text)" }}>{scan.filename}</div>
                                     <div className="text-xs mt-0.5" style={{ color: "var(--text-3)" }}>{new Date(scan.created_at).toLocaleString()}</div>
@@ -170,7 +160,6 @@ export default function DashboardPage() {
                 )}
             </div>
 
-            {/* Model status */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {[
                     { name: "Random Forest", abbr: "RF", color: "#818cf8", glow: "#4f46e5" },

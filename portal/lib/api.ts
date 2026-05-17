@@ -1,84 +1,41 @@
-type FormDataValue = string | Blob;
+type FormVal = string | Blob;
 
-const DEFAULT_API_BASE_URL = "http://127.0.0.1:8000";
-
-function normalizeApiPath(path: string) {
-    return path.startsWith("/") ? path : `/${path}`;
-}
-
-export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_BASE_URL).replace(/\/$/, "");
+const BACKEND_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "");
 
 export function buildApiUrl(path: string) {
-    return `${API_BASE_URL}${normalizeApiPath(path)}`;
+    const normalized = path.startsWith("/") ? path : `/${path}`;
+    return `${BACKEND_URL}${normalized}`;
 }
 
-export function createFormData(entries: Record<string, FormDataValue>) {
-    const formData = new FormData();
-
-    for (const [key, value] of Object.entries(entries)) {
-        formData.append(key, value);
-    }
-
-    return formData;
+export function createFormData(fields: Record<string, FormVal>) {
+    const form = new FormData();
+    for (const [k, v] of Object.entries(fields)) form.append(k, v);
+    return form;
 }
 
-export async function readApiError(response: Response, fallbackMessage = "Request failed") {
+export async function readApiError(resp: Response, fallback = "Request failed") {
     try {
-        const payload = (await response.json()) as {
-            detail?: unknown;
-            error?: string;
-            message?: string;
-        };
-
-        if (typeof payload.detail === "string") {
-            return payload.detail;
+        const body = (await resp.json()) as { detail?: unknown; error?: string; message?: string };
+        if (typeof body.detail === "string") return body.detail;
+        if (body.detail && typeof body.detail === "object") {
+            const d = body.detail as { error?: string; message?: string };
+            if (d.message) return d.message;
+            if (d.error) return d.error;
         }
-
-        if (payload.detail && typeof payload.detail === "object") {
-            const detail = payload.detail as {
-                error?: string;
-                message?: string;
-            };
-
-            if (detail.message) {
-                return detail.message;
-            }
-
-            if (detail.error) {
-                return detail.error;
-            }
-        }
-
-        return payload.message ?? payload.error ?? fallbackMessage;
+        return body.message ?? body.error ?? fallback;
     } catch {
-        return fallbackMessage;
+        return fallback;
     }
 }
 
 export async function getJson<T>(path: string, init?: RequestInit) {
-    const response = await fetch(buildApiUrl(path), init);
-
-    if (!response.ok) {
-        throw new Error(await readApiError(response, `Request failed (${response.status})`));
-    }
-
-    return response.json() as Promise<T>;
+    const resp = await fetch(buildApiUrl(path), init);
+    if (!resp.ok) throw new Error(await readApiError(resp, `Request failed (${resp.status})`));
+    return resp.json() as Promise<T>;
 }
 
-export async function postForm<T>(
-    path: string,
-    entries: Record<string, FormDataValue>,
-    init?: Omit<RequestInit, "body" | "method">,
-) {
-    const response = await fetch(buildApiUrl(path), {
-        ...init,
-        method: "POST",
-        body: createFormData(entries),
-    });
-
-    if (!response.ok) {
-        throw new Error(await readApiError(response, "Request failed"));
-    }
-
-    return response.json() as Promise<T>;
+export async function postForm<T>(path: string, fields: Record<string, FormVal>, init?: Omit<RequestInit, "body" | "method">) {
+    const resp = await fetch(buildApiUrl(path), { ...init, method: "POST", body: createFormData(fields) });
+    if (!resp.ok) throw new Error(await readApiError(resp, "Request failed"));
+    return resp.json() as Promise<T>;
 }

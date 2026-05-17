@@ -3,16 +3,13 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { getJson } from "@/lib/api";
 import type { ConfusionResponse, ModelsResponse, RocResponse } from "@/lib/types";
-import {
-    LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
-    Legend, CartesianGrid
-} from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from "recharts";
 import { Activity, Cpu, Shield } from "lucide-react";
 
 const MODEL_META: Record<string, { name: string; color: string; icon: string }> = {
-    ds1_rf: { name: "Random Forest", color: "#818cf8", icon: "🌲" },
-    ds1_xgb: { name: "XGBoost", color: "#fb923c", icon: "⚡" },
-    ds1_lgbm: { name: "LightGBM", color: "#c084fc", icon: "🔥" },
+    ds1_rf:   { name: "Random Forest", color: "#818cf8", icon: "🌲" },
+    ds1_xgb:  { name: "XGBoost",       color: "#fb923c", icon: "⚡" },
+    ds1_lgbm: { name: "LightGBM",      color: "#c084fc", icon: "🔥" },
 };
 
 export default function ModelsPage() {
@@ -29,22 +26,18 @@ export default function ModelsPage() {
             getJson<ConfusionResponse>("/api/models/confusion", { headers: authHeaders() }),
         ]).then(([m, r, c]) => {
             setModels(m.models ?? []);
-            setRoc(r);
-            setConfusion(c);
-            setLoading(false);
+            setRoc(r); setConfusion(c); setLoading(false);
         }).catch(() => setLoading(false));
     }, [authHeaders]);
 
-    // Build ROC chart data: zip fpr/tpr from each model into a single array indexed by point
-    const rocChartData = () => {
+    const buildRocChart = () => {
         if (!roc?.roc) return [];
-        // Use the first model's FPR as x-axis (all models have same length)
         const keys = Object.keys(roc.roc);
         if (!keys.length) return [];
-        const firstFpr = roc.roc[keys[0]].fpr;
-        return firstFpr.map((fpr, i) => {
-            const pt: Record<string, number> = { fpr: Math.round(fpr * 1000) / 10 };
-            keys.forEach(k => { pt[k] = Math.round(roc.roc[k].tpr[i] * 1000) / 10; });
+        const baseFpr = roc.roc[keys[0]].fpr;
+        return baseFpr.map((fprVal, i) => {
+            const pt: Record<string, number> = { fpr: Math.round(fprVal * 1000) / 10 };
+            for (const k of keys) pt[k] = Math.round(roc.roc[k].tpr[i] * 1000) / 10;
             return pt;
         });
     };
@@ -56,7 +49,6 @@ export default function ModelsPage() {
                 <p className="text-sm mt-1" style={{ color: "var(--text-3)" }}>Performance metrics and evaluation charts for all 3 models</p>
             </div>
 
-            {/* Model Cards */}
             <div className="grid md:grid-cols-3 gap-4">
                 {loading ? [1, 2, 3].map(i => (
                     <div key={i} className="glass rounded-2xl p-5 animate-pulse h-40" style={{ background: "var(--surface-2)" }} />
@@ -70,9 +62,7 @@ export default function ModelsPage() {
                                     <div className="font-bold text-sm" style={{ color: "var(--text)" }}>{meta.name}</div>
                                     <div className="flex items-center gap-1.5 mt-0.5">
                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                                        <span className="text-xs" style={{ color: "var(--text-3)" }}>
-                                            {m.loaded ? "Loaded" : "Not loaded"}
-                                        </span>
+                                        <span className="text-xs" style={{ color: "var(--text-3)" }}>{m.loaded ? "Loaded" : "Not loaded"}</span>
                                     </div>
                                 </div>
                             </div>
@@ -94,7 +84,6 @@ export default function ModelsPage() {
                 })}
             </div>
 
-            {/* ROC Curves */}
             <div className="glass rounded-2xl p-6">
                 <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
                     <div>
@@ -113,20 +102,18 @@ export default function ModelsPage() {
                     </div>
                 </div>
                 <ResponsiveContainer width="100%" height={280}>
-                    <LineChart data={rocChartData()} margin={{ left: 0, right: 10, top: 5, bottom: 5 }}>
+                    <LineChart data={buildRocChart()} margin={{ left: 0, right: 10, top: 5, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                        <XAxis dataKey="fpr" tickFormatter={v => `${v}%`} tick={{ fontSize: 10, fill: "var(--text-3)" }} axisLine={false} tickLine={false} label={{ value: "FPR (%)", position: "insideBottom", offset: -2, fill: "var(--text-3)", fontSize: 10 }} />
-                        <YAxis tickFormatter={v => `${v}%`} tick={{ fontSize: 10, fill: "var(--text-3)" }} axisLine={false} tickLine={false} domain={[0, 100]} label={{ value: "TPR (%)", angle: -90, position: "insideLeft", fill: "var(--text-3)", fontSize: 10 }} />
+                        <XAxis dataKey="fpr" tickFormatter={v => `${v}%`} tick={{ fontSize: 10, fill: "var(--text-3)" }} axisLine={false} tickLine={false}
+                            label={{ value: "FPR (%)", position: "insideBottom", offset: -2, fill: "var(--text-3)", fontSize: 10 }} />
+                        <YAxis tickFormatter={v => `${v}%`} tick={{ fontSize: 10, fill: "var(--text-3)" }} axisLine={false} tickLine={false} domain={[0, 100]}
+                            label={{ value: "TPR (%)", angle: -90, position: "insideLeft", fill: "var(--text-3)", fontSize: 10 }} />
                         <Tooltip contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, fontSize: 11, color: "var(--text)" }}
                             formatter={(v: unknown) => [`${Number(v).toFixed(1)}%`]} />
-                        <Legend formatter={(value) => MODEL_META[value]?.name ?? value} />
-                        {/* Diagonal reference line (random classifier) */}
+                        <Legend formatter={value => MODEL_META[value]?.name ?? value} />
                         <Line type="linear" dataKey="__diagonal__" dot={false} strokeDasharray="4 4" stroke="var(--border-2)" name="Random" />
                         {roc && Object.keys(roc.roc).map(key => (
-                            <Line key={key} type="monotone" dataKey={key}
-                                stroke={MODEL_META[key]?.color ?? "#818cf8"}
-                                strokeWidth={2.5} dot={false}
-                                name={key} activeDot={{ r: 4 }} />
+                            <Line key={key} type="monotone" dataKey={key} stroke={MODEL_META[key]?.color ?? "#818cf8"} strokeWidth={2.5} dot={false} name={key} activeDot={{ r: 4 }} />
                         ))}
                     </LineChart>
                 </ResponsiveContainer>
@@ -135,7 +122,6 @@ export default function ModelsPage() {
                 </p>
             </div>
 
-            {/* Confusion Matrices */}
             {confusion && (
                 <div className="glass rounded-2xl p-6">
                     <h2 className="font-bold text-sm flex items-center gap-2 mb-5" style={{ color: "var(--text)" }}>
@@ -154,7 +140,6 @@ export default function ModelsPage() {
                                         <span className="text-lg">{meta.icon}</span>
                                         <span className="font-bold text-sm" style={{ color: meta.color }}>{meta.name}</span>
                                     </div>
-                                    {/* 2×2 grid */}
                                     <div className="grid grid-cols-2 gap-1.5">
                                         {[
                                             { label: "TP", value: cm.tp, color: "#10b981", bg: "rgba(16,185,129,0.1)", desc: "True Positive" },
@@ -162,8 +147,7 @@ export default function ModelsPage() {
                                             { label: "FP", value: cm.fp, color: "#fbbf24", bg: "rgba(245,158,11,0.1)", desc: "False Positive" },
                                             { label: "TN", value: cm.tn, color: "#34d399", bg: "rgba(52,211,153,0.1)", desc: "True Negative" },
                                         ].map(cell => (
-                                            <div key={cell.label} className="rounded-xl p-3 text-center"
-                                                style={{ background: cell.bg, border: `1px solid ${cell.color}28` }}>
+                                            <div key={cell.label} className="rounded-xl p-3 text-center" style={{ background: cell.bg, border: `1px solid ${cell.color}28` }}>
                                                 <div className="font-black text-lg" style={{ color: cell.color }}>{cell.value.toLocaleString()}</div>
                                                 <div className="text-xs font-bold" style={{ color: cell.color }}>{cell.label}</div>
                                                 <div className="text-xs mt-0.5" style={{ color: "var(--text-3)" }}>{cell.desc}</div>
@@ -188,7 +172,6 @@ export default function ModelsPage() {
                 </div>
             )}
 
-            {/* Dataset info */}
             <div className="glass rounded-2xl p-5">
                 <h2 className="font-bold text-sm flex items-center gap-2 mb-4" style={{ color: "var(--text)" }}>
                     <Shield size={15} style={{ color: "var(--accent)" }} /> Training Dataset — DS1

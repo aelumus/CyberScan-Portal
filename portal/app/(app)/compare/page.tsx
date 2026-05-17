@@ -1,33 +1,85 @@
 "use client";
 import { useState } from "react";
-import { VerdictBadge, ScoreBar } from "@/components/Badges";
-import { GitCompare, Loader2, ArrowRight, RefreshCw } from "lucide-react";
-import Link from "next/link";
 import { useScans } from "@/hooks/useScans";
-import type { FeatureImportance, ScanRecord, ScanModelResult } from "@/lib/types";
+import { VerdictBadge, RiskBadge, ScoreBar } from "@/components/Badges";
+import type { ScanRecord } from "@/lib/types";
+import { GitCompare, ChevronDown, Shield } from "lucide-react";
 
-const MODEL_NAMES: Record<string, string> = {
-    "ds1_rf": "Random Forest", "ds1_xgb": "XGBoost", "ds1_lgbm": "LightGBM"
-};
-const MODEL_COLORS: Record<string, string> = {
-    "ds1_rf": "#818cf8", "ds1_xgb": "#fb923c", "ds1_lgbm": "#c084fc"
-};
+function ScanSelect({ selected, scans, onChange, label }: {
+    selected: string; scans: ScanRecord[]; onChange: (id: string) => void; label: string;
+}) {
+    return (
+        <div className="glass rounded-2xl p-5">
+            <label className="text-xs font-bold uppercase tracking-widest mb-3 block" style={{ color: "var(--text-3)" }}>{label}</label>
+            <div className="relative">
+                <select value={selected} onChange={e => onChange(e.target.value)}
+                    className="w-full rounded-xl px-4 py-3 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                    style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text)" }}>
+                    <option value="">— Select scan —</option>
+                    {scans.map(s => (
+                        <option key={s.id} value={s.id}>{s.filename} · {s.verdict} · {new Date(s.created_at).toLocaleDateString()}</option>
+                    ))}
+                </select>
+                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--text-3)" }} />
+            </div>
+        </div>
+    );
+}
+
+function ScanSummary({ scan }: { scan: ScanRecord }) {
+    const mlResults = scan.ml_results ?? [];
+    return (
+        <div className="space-y-4">
+            <div className="glass rounded-2xl p-5">
+                <div className="flex items-center gap-3 mb-3 flex-wrap">
+                    <VerdictBadge verdict={scan.verdict} />
+                    {scan.risk_level && <RiskBadge level={scan.risk_level} />}
+                </div>
+                <div className="text-lg font-black truncate mb-1" style={{ color: "var(--text)" }}>{scan.filename}</div>
+                <div className="text-xs font-mono mb-4" style={{ color: "var(--text-3)" }}>{(scan.sha256 ?? "").slice(0, 24)}…</div>
+                <div className="space-y-2">
+                    {[
+                        ["Overall Score", `${Math.round((scan.score ?? 0) * 100)}%`],
+                        ["Scan Time", `${scan.scan_time ?? 0}s`],
+                        ["File Size", `${((scan.file_size ?? 0) / 1024).toFixed(0)} KB`],
+                        ["Mode", scan.mode ?? "—"],
+                        ["Threshold", String(scan.threshold ?? "—")],
+                    ].map(([k, v]) => (
+                        <div key={k} className="flex justify-between text-sm pb-2" style={{ borderBottom: "1px solid var(--border)" }}>
+                            <span style={{ color: "var(--text-3)", fontSize: 12 }}>{k}</span>
+                            <span className="font-mono text-xs font-semibold" style={{ color: "var(--text)" }}>{v}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+            {mlResults.length > 0 && (
+                <div className="glass rounded-2xl p-5">
+                    <h4 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "var(--text-3)" }}>Model Scores</h4>
+                    <div className="space-y-3">
+                        {mlResults.map(r => (
+                            <div key={r.model_key ?? r.algo}>
+                                <div className="flex items-center justify-between text-xs mb-1">
+                                    <span className="font-mono" style={{ color: "var(--text-2)" }}>{r.name ?? r.algo}</span>
+                                    <span className="font-bold" style={{ color: r.triggered ? "#f87171" : "#34d399" }}>{Math.round(r.score * 100)}%</span>
+                                </div>
+                                <ScoreBar score={r.score} />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
 
 export default function ComparePage() {
-    const [left, setLeft] = useState<string>("");
-    const [right, setRight] = useState<string>("");
     const { scans, loading } = useScans();
+    const [leftId, setLeftId] = useState("");
+    const [rightId, setRightId] = useState("");
 
-    const leftScan = scans.find(s => s.id === left);
-    const rightScan = scans.find(s => s.id === right);
-    const canCompare = leftScan && rightScan;
-
-    const getModelScore = (scan: ScanRecord, key: string) => {
-        const r = scan.ml_results?.find((model: ScanModelResult) => model.model_key === key);
-        return r ? Math.round(r.score * 100) : null;
-    };
-
-    const verdictColor = (v: string) => v === "Malicious" ? "#f87171" : v === "Suspicious" ? "#fbbf24" : "#34d399";
+    const leftScan = scans.find(s => s.id === leftId);
+    const rightScan = scans.find(s => s.id === rightId);
+    const bothSelected = Boolean(leftScan && rightScan);
 
     return (
         <div className="space-y-6 max-w-6xl mx-auto">
@@ -35,167 +87,65 @@ export default function ComparePage() {
                 <h1 className="text-2xl font-black flex items-center gap-3" style={{ color: "var(--text)" }}>
                     <GitCompare size={24} style={{ color: "var(--accent)" }} /> Compare Scans
                 </h1>
-                <p className="text-sm mt-1" style={{ color: "var(--text-3)" }}>Select two scans to compare side-by-side</p>
+                <p className="text-sm mt-1" style={{ color: "var(--text-3)" }}>Side-by-side comparison of two scan results</p>
             </div>
 
-            {/* Selectors */}
             <div className="grid md:grid-cols-2 gap-4">
-                {[
-                    { label: "Scan A", value: left, setter: setLeft, other: right },
-                    { label: "Scan B", value: right, setter: setRight, other: left },
-                ].map(({ label, value, setter, other }) => (
-                    <div key={label}>
-                        <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--text-3)" }}>{label}</label>
-                        {loading ? (
-                            <div className="glass rounded-xl p-3 text-sm" style={{ color: "var(--text-3)" }}>
-                                <Loader2 size={14} className="animate-spin inline mr-2" />Loading…
-                            </div>
-                        ) : (
-                            <select value={value} onChange={e => setter(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                                style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}>
-                                <option value="">— Select scan —</option>
-                                {scans.filter(s => s.id !== other).map(s => (
-                                    <option key={s.id} value={s.id}>
-                                        {s.filename} ({Math.round((s.score ?? 0) * 100)}% — {s.verdict})
-                                    </option>
-                                ))}
-                            </select>
-                        )}
-                    </div>
-                ))}
+                <ScanSelect label="Scan A" selected={leftId} scans={scans} onChange={setLeftId} />
+                <ScanSelect label="Scan B" selected={rightId} scans={scans} onChange={setRightId} />
             </div>
 
-            {/* Swap button */}
-            {left && right && (
-                <div className="flex justify-center">
-                    <button onClick={() => { const tmp = left; setLeft(right); setRight(tmp); }}
-                        className="flex items-center gap-2 text-xs px-4 py-2 rounded-xl transition-all"
-                        style={{ background: "var(--accent-bg)", border: "1px solid var(--accent-brd)", color: "var(--accent)" }}>
-                        <RefreshCw size={13} /> Swap A ↔ B
-                    </button>
+            {loading && (
+                <div className="text-center py-10 text-sm" style={{ color: "var(--text-3)" }}>Loading scans…</div>
+            )}
+
+            {!loading && scans.length < 2 && (
+                <div className="glass rounded-2xl p-10 flex flex-col items-center gap-3">
+                    <Shield size={36} style={{ color: "var(--border-2)" }} />
+                    <p className="text-sm" style={{ color: "var(--text-3)" }}>Need at least 2 scans to compare. Upload more files first.</p>
                 </div>
             )}
 
-            {!canCompare && (
-                <div className="glass rounded-2xl p-16 flex flex-col items-center gap-4">
-                    <GitCompare size={40} style={{ color: "var(--border-2)" }} />
-                    <p className="text-sm" style={{ color: "var(--text-3)" }}>Select two scans above to start comparing</p>
-                    {scans.length === 0 && !loading && (
-                        <Link href="/scan" className="flex items-center gap-1 text-xs" style={{ color: "var(--accent)" }}>
-                            Upload a file first <ArrowRight size={12} />
-                        </Link>
-                    )}
-                </div>
-            )}
-
-            {canCompare && (
-                <div className="space-y-5">
-                    {/* Header cards */}
-                    <div className="grid md:grid-cols-2 gap-4">
-                        {[leftScan, rightScan].map((scan, idx) => {
-                            const vc = verdictColor(scan.verdict);
-                            return (
-                                <div key={idx} className="glass rounded-2xl p-5 relative overflow-hidden"
-                                    style={{ boxShadow: `0 0 30px ${vc}15` }}>
-                                    <div className="absolute top-3 right-3 text-xs font-bold px-2 py-0.5 rounded-full"
-                                        style={{ background: "var(--accent-bg)", color: "var(--accent)", border: "1px solid var(--accent-brd)" }}>
-                                        Scan {idx === 0 ? "A" : "B"}
-                                    </div>
-                                    <h3 className="font-bold text-sm truncate pr-12 mb-2" style={{ color: "var(--text)" }}>{scan.filename}</h3>
-                                    <div className="flex items-center gap-2 mb-3"><VerdictBadge verdict={scan.verdict} /></div>
-                                    <div className="text-3xl font-black mb-1" style={{ color: vc }}>{Math.round((scan.score ?? 0) * 100)}%</div>
-                                    <div className="text-xs" style={{ color: "var(--text-3)" }}>malware score · {scan.scan_time}s scan time</div>
-                                    <div className="mt-3 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
-                                        <ScoreBar score={scan.score ?? 0} />
-                                    </div>
-                                </div>
-                            );
-                        })}
+            {bothSelected && leftScan && rightScan && (
+                <>
+                    <div className="grid md:grid-cols-2 gap-5">
+                        <div>
+                            <div className="text-xs font-bold uppercase tracking-widest mb-3 px-1" style={{ color: "var(--accent)" }}>Scan A</div>
+                            <ScanSummary scan={leftScan} />
+                        </div>
+                        <div>
+                            <div className="text-xs font-bold uppercase tracking-widest mb-3 px-1" style={{ color: "#c084fc" }}>Scan B</div>
+                            <ScanSummary scan={rightScan} />
+                        </div>
                     </div>
 
-                    {/* Score comparison table */}
-                    <div className="glass rounded-2xl overflow-hidden">
-                        <div className="px-5 py-3 text-xs font-bold uppercase tracking-widest"
-                            style={{ borderBottom: "1px solid var(--border)", color: "var(--text-3)" }}>
-                            Metric Comparison
-                        </div>
-                        <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+                    <div className="glass rounded-2xl p-5">
+                        <h3 className="text-xs font-bold uppercase tracking-widest mb-5" style={{ color: "var(--text-3)" }}>Key Differences</h3>
+                        <div className="space-y-3">
                             {[
-                                ["Final Verdict", leftScan.verdict, rightScan.verdict, "verdict"],
-                                ["Risk Level", leftScan.risk_level?.toUpperCase(), rightScan.risk_level?.toUpperCase(), "text"],
-                                ["Overall Score", `${Math.round((leftScan.score ?? 0) * 100)}%`, `${Math.round((rightScan.score ?? 0) * 100)}%`, "score"],
-                                ["File Size", `${Math.round((leftScan.file_size ?? 0) / 1024)} KB`, `${Math.round((rightScan.file_size ?? 0) / 1024)} KB`, "text"],
-                                ["Scan Time", `${leftScan.scan_time}s`, `${rightScan.scan_time}s`, "text"],
-                                ["PE Parse OK", leftScan.pe_parse_ok ? "Yes" : "No", rightScan.pe_parse_ok ? "Yes" : "No", "text"],
-                                ...["ds1_rf", "ds1_xgb", "ds1_lgbm"].map(k => {
-                                    const lv = getModelScore(leftScan, k);
-                                    const rv = getModelScore(rightScan, k);
-                                    return [MODEL_NAMES[k], lv !== null ? `${lv}%` : "—", rv !== null ? `${rv}%` : "—", "model", MODEL_COLORS[k]];
-                                }),
-                            ].map(([label, lv, rv, type, color]) => {
-                                const isScore = type === "score" || type === "model";
-                                const lNum = parseFloat(String(lv));
-                                const rNum = parseFloat(String(rv));
-                                const lWins = isScore && !isNaN(lNum) && !isNaN(rNum) && lNum < rNum;
-                                const rWins = isScore && !isNaN(lNum) && !isNaN(rNum) && rNum < lNum;
-                                return (
-                                    <div key={String(label)} className="grid grid-cols-[1fr_1fr_1fr] gap-4 px-5 py-3 text-sm items-center">
-                                        <span className="text-xs font-semibold" style={{ color: type === "model" ? String(color) : "var(--text-3)" }}>
-                                            {label}
-                                        </span>
-                                        <span className="font-bold font-mono text-center" style={{
-                                            color: type === "verdict" ? verdictColor(String(lv)) : lWins ? "#34d399" : "var(--text)"
-                                        }}>{lv}</span>
-                                        <span className="font-bold font-mono text-center" style={{
-                                            color: type === "verdict" ? verdictColor(String(rv)) : rWins ? "#34d399" : "var(--text)"
-                                        }}>{rv}</span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {/* Feature comparison */}
-                    {leftScan.features?.DS1 && rightScan.features?.DS1 && (
-                        <div className="glass rounded-2xl p-5">
-                            <h3 className="text-xs font-bold uppercase tracking-widest mb-5" style={{ color: "var(--text-3)" }}>
-                                Top Feature Importances (RF)
-                            </h3>
-                            <div className="grid md:grid-cols-2 gap-6">
-                                {[leftScan, rightScan].map((scan, idx) => (
-                                    <div key={idx}>
-                                        <div className="text-xs font-bold mb-3" style={{ color: "var(--accent)" }}>Scan {idx === 0 ? "A" : "B"} — {scan.filename.slice(0, 24)}</div>
-                                        <div className="space-y-2.5">
-                                            {(scan.features?.DS1 ?? []).slice(0, 8).map((f: FeatureImportance) => (
-                                                <div key={f.name} className="flex items-center gap-3">
-                                                    <div className="w-28 text-xs font-mono truncate" style={{ color: "var(--text-3)" }}>{f.name}</div>
-                                                    <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
-                                                        <div className="h-full rounded-full" style={{ width: `${Math.min(f.importance * 1000, 100)}%`, background: idx === 0 ? "#818cf8" : "#fb923c" }} />
-                                                    </div>
-                                                    <span className="text-xs w-10 text-right font-mono" style={{ color: "var(--text-3)" }}>{(f.importance * 100).toFixed(1)}%</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Links to full reports */}
-                    <div className="grid md:grid-cols-2 gap-4">
-                        {[leftScan, rightScan].map((scan, idx) => (
-                            <Link key={idx} href={`/scans/${scan.id}`}
-                                className="glass flex items-center justify-between p-4 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-lg group">
-                                <div>
-                                    <div className="text-xs font-bold mb-0.5" style={{ color: "var(--accent)" }}>Scan {idx === 0 ? "A" : "B"} — Full Report</div>
-                                    <div className="text-sm font-medium" style={{ color: "var(--text)" }}>{scan.filename}</div>
+                                { label: "Verdict", a: leftScan.verdict, b: rightScan.verdict, changed: leftScan.verdict !== rightScan.verdict },
+                                { label: "Risk Level", a: leftScan.risk_level ?? "—", b: rightScan.risk_level ?? "—", changed: leftScan.risk_level !== rightScan.risk_level },
+                                { label: "Score", a: `${Math.round((leftScan.score ?? 0) * 100)}%`, b: `${Math.round((rightScan.score ?? 0) * 100)}%`, changed: Math.abs((leftScan.score ?? 0) - (rightScan.score ?? 0)) > 0.05 },
+                                { label: "Scan Time", a: `${leftScan.scan_time ?? 0}s`, b: `${rightScan.scan_time ?? 0}s`, changed: false },
+                                { label: "File Size", a: `${((leftScan.file_size ?? 0) / 1024).toFixed(0)} KB`, b: `${((rightScan.file_size ?? 0) / 1024).toFixed(0)} KB`, changed: leftScan.file_size !== rightScan.file_size },
+                            ].map(row => (
+                                <div key={row.label} className="flex items-center gap-4 p-3 rounded-xl"
+                                    style={{ background: row.changed ? "rgba(245,158,11,0.06)" : "var(--surface-2)", border: `1px solid ${row.changed ? "rgba(245,158,11,0.2)" : "var(--border)"}` }}>
+                                    <span className="text-xs font-medium w-24 shrink-0" style={{ color: "var(--text-3)" }}>{row.label}</span>
+                                    <span className="flex-1 text-center text-sm font-bold" style={{ color: "var(--accent)" }}>{row.a}</span>
+                                    {row.changed ? <span className="text-amber-400 font-bold">⇄</span> : <span style={{ color: "var(--text-3)" }}>═</span>}
+                                    <span className="flex-1 text-center text-sm font-bold" style={{ color: "#c084fc" }}>{row.b}</span>
                                 </div>
-                                <ArrowRight size={16} style={{ color: "var(--accent)" }} className="group-hover:translate-x-1 transition-transform" />
-                            </Link>
-                        ))}
+                            ))}
+                        </div>
                     </div>
+                </>
+            )}
+
+            {!bothSelected && !loading && scans.length >= 2 && (
+                <div className="glass rounded-2xl p-10 flex flex-col items-center gap-3">
+                    <GitCompare size={36} style={{ color: "var(--border-2)" }} />
+                    <p className="text-sm" style={{ color: "var(--text-3)" }}>Select two scans above to compare them</p>
                 </div>
             )}
         </div>
