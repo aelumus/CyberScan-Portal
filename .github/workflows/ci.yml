@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  # ── Frontend: ESLint + TypeScript ────────────────
+  # Frontend:ESLint + TypeScript
   lint-frontend:
     name: "Frontend · Lint & Types"
     runs-on: ubuntu-latest
@@ -32,7 +32,7 @@ jobs:
       - name: TypeScript type check
         run: npx tsc --noEmit
 
-  # ── Backend: Ruff linter + formatter ─────────────
+  # Backend:Ruff linter + formatter 
   lint-backend:
     name: "Backend · Lint & Format"
     runs-on: ubuntu-latest
@@ -52,7 +52,7 @@ jobs:
       - name: Ruff format check
         run: ruff format --check backend/
 
-  # ── Docker: build both images ────────────────────
+  # Docker: build both images
   build:
     name: "Docker · Build Images"
     runs-on: ubuntu-latest

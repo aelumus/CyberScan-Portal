@@ -1,0 +1,11 @@
+# Pyrefly configuration
+# https://github.com/facebook/pyrefly
+
+[project]
+include = ["backend"]
+exclude = ["**/__pycache__", "Malware-Detection-and-Analysis-using-Machine-Learning-main"]
+
+[errors]
+# C-extensions without type stubs (yara-python, pefile, joblib, etc.)
+missing-module-source = false
+missing-import = false

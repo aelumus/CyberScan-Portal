@@ -1,0 +1,14 @@
+{
+    "include": ["backend"],
+    "exclude": [
+        "**/__pycache__",
+        "Malware-Detection-and-Analysis-using-Machine-Learning-main"
+    ],
+    "pythonPath": "C:/Program Files/Python312/python.exe",
+    "pythonVersion": "3.12",
+    "typeCheckingMode": "basic",
+    "useLibraryCodeForTypes": true,
+    "reportMissingImports": "none",
+    "reportMissingModuleSource": "none",
+    "reportMissingTypeStubs": "none"
+}

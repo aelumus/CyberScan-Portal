@@ -46,3 +46,29 @@ Malware-Detection-and-Analysis-using-Machine-Learning-main/*
 !Malware-Detection-and-Analysis-using-Machine-Learning-main/ML_model/
 Malware-Detection-and-Analysis-using-Machine-Learning-main/ML_model/*
 !Malware-Detection-and-Analysis-using-Machine-Learning-main/ML_model/*.pkl
+
+# ── Office / PDF reports (generated files) ──────
+*.docx
+*.xlsx
+*.pdf
+
+# ── Jupyter notebooks ────────────────────────────
+*.ipynb
+
+# ── Dataset CSV (large binary) ──────────────────
+*.csv
+
+# ── Ruff cache ───────────────────────────────────
+.ruff_cache/
+
+# ── Next.js cache ────────────────────────────────
+.next/
+portal/.next/
+
+# ── Test / Temporary PE samples ─────────────────
+backend/test_malware_sample.exe
+backend/uploads/
+
+# ── PyC / compiled Python ────────────────────────
+*.pyc
+*.pyo
