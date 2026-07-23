@@ -31,7 +31,7 @@ class Settings:
         self.jwt_secret = os.getenv("JWT_SECRET", "change-me-in-production")
         self.jwt_algorithm = os.getenv("JWT_ALGORITHM", "HS256")
         self.jwt_expire_days = _env_int("JWT_EXPIRE_DAYS", 7)
-        self.host = os.getenv("HOST", "0.0.0.0")
+        self.host = os.getenv("HOST", "0.0.0.0")  # nosec B104
         self.port = _env_int("PORT", 8000)
         self.reload = _env_bool("RELOAD", True)
 

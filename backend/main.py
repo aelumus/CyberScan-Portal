@@ -727,7 +727,7 @@ async def run_scan(
         )
 
     sha256 = hashlib.sha256(file_bytes).hexdigest()
-    md5 = hashlib.md5(file_bytes).hexdigest()
+    md5 = hashlib.md5(file_bytes, usedforsecurity=False).hexdigest()
     file_size = len(file_bytes)
 
     scan_doc = {
