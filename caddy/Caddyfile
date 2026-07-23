@@ -1,4 +1,15 @@
 {$SITE_ADDRESS::80} {
+	# Security headers (DevSecOps / ZAP triage fixes)
+	header {
+		defer
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+		-X-Powered-By
+}
+
 	handle /api/* {
 		reverse_proxy backend:8000
 	}

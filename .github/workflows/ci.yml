@@ -93,7 +93,10 @@ jobs:
         run: cp .env.example .env
 
       - name: Create reports dir
-        run: mkdir -p zap-reports
+        run: |
+          mkdir -p zap-reports
+          # ZAP container user must be able to write reports on the runner mount
+          chmod -R 777 zap-reports
 
       - name: Start app (caddy + backend + frontend + worker)
         run: docker compose up -d --build caddy backend frontend worker
@@ -115,7 +118,7 @@ jobs:
 
       - name: Run ZAP Baseline
         continue-on-error: true
-        run: docker compose --profile dast run --rm zap
+        run: docker compose --profile dast run --rm --user root zap
 
       - name: Upload ZAP report
         if: always()
