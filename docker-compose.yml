@@ -29,7 +29,7 @@ services:
     volumes:
       - app-data:/app/data
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/api/health"]
+      test: [ "CMD", "curl", "-fsS", "http://127.0.0.1:8000/api/health" ]
       interval: 30s
       timeout: 5s
       start_period: 30s
@@ -47,7 +47,7 @@ services:
       UPLOAD_DIR: /app/data/uploads
     volumes:
       - app-data:/app/data
-    command: ["python", "worker.py"]
+    command: [ "python", "worker.py" ]
     depends_on:
       backend:
         condition: service_healthy
@@ -120,10 +120,61 @@ services:
       - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
     restart: unless-stopped
 
+  sonarqube-db:
+    image: postgres:15-alpine
+    container_name: cyberscan-sonarqube-db
+    environment:
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: sonar
+      POSTGRES_DB: sonarqube
+    volumes:
+      - sonarqube-db:/var/lib/postgresql/data
+    restart: unless-stopped
+  sonarqube:
+    image: sonarqube:lts-community
+    container_name: cyberscan-sonarqube
+    depends_on:
+      - sonarqube-db
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonarqube-db:5432/sonarqube
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: sonar
+    ports:
+      - "9000:9000"
+    volumes:
+      - sonarqube-data:/opt/sonarqube/data
+      - sonarqube-extensions:/opt/sonarqube/extensions
+      - sonarqube-logs:/opt/sonarqube/logs
+    restart: unless-stopped
+
+  # ── DAST (on demand) ────────────────────────────────────────────────────────
+  zap:
+    image: ghcr.io/zaproxy/zaproxy:stable
+    profiles: ["dast"]
+    volumes:
+      - ./zap-reports:/zap/wrk:rw
+    command:
+      - zap-baseline.py
+      - -t
+      - http://caddy
+      - -r
+      - zap-report.html
+      - -J
+      - zap-report.json
+      - -I
+    depends_on:
+      - caddy
+      - backend
+      - frontend
+
 volumes:
   app-data:
   caddy-data:
   caddy-config:
   prometheus-data:
   grafana-data:
+  sonarqube-data:
+  sonarqube-extensions:
+  sonarqube-logs:
+  sonarqube-db:
 
