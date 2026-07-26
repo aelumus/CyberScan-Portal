@@ -390,8 +390,11 @@ def login(email: str = Form(...), password: str = Form(...)):
     }
 
 
-@app.get("/api/auth/debug")
+@app.get("/api/auth/debug", include_in_schema=False)
 def debug_db():
+    """Local diagnostics only. Hidden from OpenAPI; 404 unless DEBUG=true."""
+    if not settings.debug:
+        raise HTTPException(status_code=404, detail="Not found")
     with sqlite3.connect(str(DB_PATH)) as conn:
         schema = conn.execute(
             "SELECT sql FROM sqlite_master WHERE type='table' AND name='users'"

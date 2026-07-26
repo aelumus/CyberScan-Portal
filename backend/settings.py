@@ -34,6 +34,8 @@ class Settings:
         self.host = os.getenv("HOST", "0.0.0.0")  # nosec B104
         self.port = _env_int("PORT", 8000)
         self.reload = _env_bool("RELOAD", True)
+        # Dev-only dumps (schema/users). Off by default — do not enable in prod.
+        self.debug = _env_bool("DEBUG", False)
 
 
 settings = Settings()
