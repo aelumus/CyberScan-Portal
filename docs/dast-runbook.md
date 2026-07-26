@@ -1,6 +1,7 @@
 # Как смотреть DAST CyberScan
 
-1. GitHub → Actions → последний CI → скачать Artifacts → `zap-baseline-report`.
+1. GitHub → Actions → workflow **CI** → Artifacts → `zap-baseline-report`.
+   Nightly API: workflow **Nightly DAST API** → `zap-api-report` (также можно **Run workflow** вручную).
 2. Открыть `zap-report.html` в браузере.
 3. Смотреть High / Medium / Low / Info. High = срочно, Info часто просто заметка.
 4. Сейчас soft-fail: пайплайн может быть зелёным даже с WARN — отчёт всё равно смотрим.
@@ -11,6 +12,7 @@
 
 ```powershell
 docker compose up -d caddy backend frontend worker
+
 docker compose --profile dast run --rm zap
 ```
 

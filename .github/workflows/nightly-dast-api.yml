@@ -1,0 +1,72 @@
+# Nightly: ZAP API scan (OpenAPI) — heavier than PR baseline
+name: Nightly DAST API
+
+on:
+  # 02:00 UTC ≈ 07:00 Asia/Almaty (UTC+5)
+  schedule:
+    - cron: "0 2 * * *"
+  # Actions → Nightly DAST API → Run workflow
+  workflow_dispatch:
+
+jobs:
+  zap-api:
+    name: "DAST · ZAP API scan"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create .env
+        run: cp .env.example .env
+
+      - name: Create reports dir
+        run: |
+          mkdir -p zap-reports
+          chmod -R 777 zap-reports
+
+      - name: Start app
+        run: docker compose up -d --build caddy backend frontend worker
+
+      - name: Wait for API health
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost/api/health; then
+              echo "healthy"
+              exit 0
+            fi
+            echo "waiting... $i"
+            sleep 5
+          done
+          echo "health check failed"
+          docker compose ps
+          docker compose logs --tail=80 backend caddy
+          exit 1
+
+      # /openapi.json is NOT on Caddy — only on backend inside the network
+      - name: Export OpenAPI spec
+        run: |
+          docker exec cyberscan-backend curl -fsS http://127.0.0.1:8000/openapi.json -o /tmp/openapi.json
+          docker cp cyberscan-backend:/tmp/openapi.json ./zap-reports/openapi.json
+          test -s ./zap-reports/openapi.json
+          head -c 80 ./zap-reports/openapi.json
+
+      - name: Run ZAP API scan
+        continue-on-error: true
+        run: |
+          docker compose --profile dast run --rm --user root --entrypoint zap-api-scan.py zap \
+            -t /zap/wrk/openapi.json \
+            -f openapi \
+            -O http://caddy \
+            -r zap-api-report.html \
+            -J zap-api-report.json \
+            -I
+
+      - name: Upload API scan reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-api-report
+          path: |
+            zap-reports/zap-api-report.html
+            zap-reports/zap-api-report.json
+            zap-reports/openapi.json
+          if-no-files-found: warn
