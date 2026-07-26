@@ -7,7 +7,7 @@
 | Корзина | Когда | Цель | У нас сейчас |
 |---------|--------|------|----------------|
 | **PR / каждый push** | каждый PR и push в `main` | быстрый гейт: секреты, линт, явные дыры в коде/deps | Gitleaks (hard), lint + Bandit + npm/pip audit, Trivy FS (soft), Docker build + Trivy image (soft), ZAP baseline (soft) |
-| **Nightly** | по cron раз в сутки | глубже, можно дольше: API DAST по OpenAPI | `.github/workflows/nightly-dast-api.yml` (ZAP API, soft-fail; JWT — бэклог) |
+| **Nightly** | по cron раз в сутки | глубже: API DAST + JWT | `.github/workflows/nightly-dast-api.yml` (secrets `ZAP_TEST_*`) |
 | **Pre-release** | перед тегом/выкладкой | ручной triage + «можно в прод?» | чеклист: отчёты ZAP/Trivy, нет незакрытых High по секретам/debug, JWT_SECRET не default |
 
 ## Почему так
@@ -31,5 +31,4 @@
 
 ## Что добавить позже (бэклог)
 
-1. Auth scan в nightly (тестовый user + `ZAP_AUTH_HEADER_VALUE` из GitHub Secret, не из репо).
-2. Release checklist issue template.
+1. Release checklist issue template.

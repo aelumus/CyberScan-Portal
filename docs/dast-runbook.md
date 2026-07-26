@@ -97,3 +97,13 @@ docker compose --profile dast run --rm --user root `
 Признак, что auth дошёл: в отчёте/логе **200** на `/api/auth/me` и `/api/scans` (не 401).
 
 Токен не коммитить и не светить в скриншотах/артефактах CI.
+
+## Nightly + JWT (CI)
+
+1. GitHub → Settings → Secrets and variables → Actions → New repository secret. Создай три:
+   - `ZAP_TEST_EMAIL` — например `zap-ci@test.local`
+   - `ZAP_TEST_PASSWORD` — длинный учебный пароль (≥6 символов)
+   - `ZAP_TEST_USERNAME` — например `zapci`
+2. Workflow `nightly-dast-api.yml`: register/login → `Authorization: Bearer` → ZAP API scan.
+3. В отчёте ищи **200** на `/api/auth/me` и `/api/scans` (не 401).
+

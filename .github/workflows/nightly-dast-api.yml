@@ -1,4 +1,4 @@
-# Nightly: ZAP API scan (OpenAPI) — heavier than PR baseline
+# Nightly: ZAP API scan (OpenAPI) + JWT auth
 name: Nightly DAST API
 
 on:
@@ -10,10 +10,10 @@ on:
 
 jobs:
   zap-api:
-    name: "DAST · ZAP API scan"
+    name: "DAST · ZAP API scan (auth)"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Create .env
         run: cp .env.example .env
@@ -49,10 +49,45 @@ jobs:
           test -s ./zap-reports/openapi.json
           head -c 80 ./zap-reports/openapi.json
 
-      - name: Run ZAP API scan
-        continue-on-error: true
+      # Credentials live in GitHub Secrets — never in the repo
+      - name: Obtain JWT for ZAP
+        id: auth
+        env:
+          ZAP_TEST_EMAIL: ${{ secrets.ZAP_TEST_EMAIL }}
+          ZAP_TEST_PASSWORD: ${{ secrets.ZAP_TEST_PASSWORD }}
+          ZAP_TEST_USERNAME: ${{ secrets.ZAP_TEST_USERNAME }}
         run: |
-          docker compose --profile dast run --rm --user root --entrypoint zap-api-scan.py zap \
+          set -euo pipefail
+          if [ -z "${ZAP_TEST_EMAIL}" ] || [ -z "${ZAP_TEST_PASSWORD}" ] || [ -z "${ZAP_TEST_USERNAME}" ]; then
+            echo "Missing secrets: set ZAP_TEST_EMAIL, ZAP_TEST_PASSWORD, ZAP_TEST_USERNAME in repo Settings → Secrets"
+            exit 1
+          fi
+          # Fresh DB each CI run → register first; if user already exists, login still works
+          curl -sS -X POST http://localhost/api/auth/register \
+            -d "username=${ZAP_TEST_USERNAME}&email=${ZAP_TEST_EMAIL}&password=${ZAP_TEST_PASSWORD}" \
+            -o /tmp/register.json -w "%{http_code}" | tee /tmp/register.code
+          echo
+          TOKEN=$(curl -sS -X POST http://localhost/api/auth/login \
+            -d "email=${ZAP_TEST_EMAIL}&password=${ZAP_TEST_PASSWORD}" | jq -r .token)
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "Login failed"; cat /tmp/register.json || true; exit 1
+          fi
+          echo "::add-mask::$TOKEN"
+          # Prove auth works before spending time on ZAP
+          curl -sS -o /tmp/me.json -w "%{http_code}" \
+            http://localhost/api/auth/me -H "Authorization: Bearer ${TOKEN}" | tee /tmp/me.code
+          echo
+          test "$(cat /tmp/me.code)" = "200"
+          echo "token=${TOKEN}" >> "$GITHUB_OUTPUT"
+
+      - name: Run ZAP API scan (with Bearer)
+        continue-on-error: true
+        env:
+          ZAP_AUTH_HEADER_VALUE: Bearer ${{ steps.auth.outputs.token }}
+        run: |
+          docker compose --profile dast run --rm --user root \
+            -e ZAP_AUTH_HEADER_VALUE \
+            --entrypoint zap-api-scan.py zap \
             -t /zap/wrk/openapi.json \
             -f openapi \
             -O http://caddy \
@@ -62,7 +97,7 @@ jobs:
 
       - name: Upload API scan reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: zap-api-report
           path: |
